@@ -2,9 +2,19 @@
 
 ## Project overview
 
-Multi-tenant SaaS for invoice management and debt collection. Each company (tenant) is fully isolated by `companyId` extracted from the JWT payload — **every database query must include a `companyId` filter**.
+SaaS multi-tenant de cobranza para **pymes chilenas**. Cada empresa (tenant) está aislada por `companyId` extraído del JWT payload — **toda consulta a la base de datos debe incluir filtro `companyId`**.
 
 Stack: NestJS 10 (backend) + Next.js 14 App Router (frontend) + Prisma 5 + PostgreSQL 16.
+
+### Versión 2.0 — Mejoras implementadas (8 fases)
+- **FASE 1**: Adaptación Chile — RUT, IVA 19%, moneda CLP, locale es-CL, tipoDocumento (FACTURA/BOLETA/NOTA_COBRO), folio
+- **FASE 2**: Planes SaaS — `SubscriptionPlan` + `CompanySubscription`. Planes: Básico $9.990, Pro $19.990, Empresa $49.990. Límites enforced en crear usuarios, clientes y facturas
+- **FASE 3**: Auditoría — `AuditLog` registra CREATE/UPDATE/DELETE/STATUS_CHANGE en clientes, facturas, pagos. Endpoint `GET /api/v1/audit-logs`
+- **FASE 4**: Mejoras financieras — `CollectionNote` (notas internas por factura), `PaymentPromise` (fechaPromesaPago, estadoPromesa: PENDIENTE/CUMPLIDA/INCUMPLIDA). Endpoint `/collection-notes`
+- **FASE 5**: Importación Excel — `GET /api/v1/import/templates/clients|invoices` + `POST /api/v1/import/clients|invoices` con dryRun. Solo en planes Pro/Empresa
+- **FASE 6**: Arquitectura WhatsApp — `MessageTemplate`, `WhatsAppService` (stub), `NotificationChannel` enum EMAIL/WHATSAPP. Solo en plan Empresa. Preparado para Meta Cloud API, Twilio, 360dialog
+- **FASE 7**: Panel Super Admin — `GET /api/v1/admin/metrics|companies|plans`. Frontend `/admin/metricas`, `/admin/empresas`, `/admin/planes`. Visible solo para rol SUPER_ADMIN
+- **FASE 8**: Seguridad — `helmet` (HTTP headers), `ThrottlerModule` (100 req/60s por IP), CORS estricto con validación de origin
 
 ---
 
@@ -57,11 +67,26 @@ npm run prisma:studio   # open Prisma Studio at localhost:5555
 | `users` | User CRUD scoped to company |
 | `clients` | Client CRUD scoped to company |
 | `invoices` | Invoice + line items CRUD, status transitions |
-| `payments` | Payment registration, void |
-| `notifications` | Manual + automated collection reminders |
-| `dashboard` | KPI aggregations (summary, overdue, delinquent, monthly) |
-| `health` | `GET /api/v1/health` — public, used by Railway healthcheck |
+| `payments` | Registro de pagos, anulación |
+| `notifications` | Recordatorios manuales + automatizados (cron) |
+| `dashboard` | KPIs, vencidas, morosos, gráfico mensual |
+| `health` | `GET /api/v1/health` — público, usado por Railway |
 | `prisma` | `@Global()` PrismaService |
+| `audit` | `@Global()` AuditService + controller `GET /audit-logs` |
+| `subscriptions` | `@Global()` SubscriptionsService + planes + límites |
+| `collection-notes` | Notas internas de cobranza + promesas de pago |
+| `import` | Importación Excel de clientes y facturas (exceljs + multer) |
+| `whatsapp` | Arquitectura WhatsApp Business (stub, sin integración real) |
+| `admin` | Panel SUPER_ADMIN — métricas, empresas, planes |
+
+### Nuevas variables de entorno
+
+No se requieren nuevas variables obligatorias. Las siguientes son opcionales:
+
+| Variable | Descripción |
+|----------|-------------|
+| `WHATSAPP_API_TOKEN` | Token Meta Cloud API o Twilio (cuando se integre WhatsApp real) |
+| `WHATSAPP_PHONE_NUMBER_ID` | ID de número de WhatsApp Business |
 
 ### Database
 

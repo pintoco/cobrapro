@@ -21,7 +21,14 @@ export class UpdateInvoiceDto {
   @IsOptional()
   dueDate?: string;
 
-  @ApiPropertyOptional({ example: 18 })
+  @ApiPropertyOptional({ example: 19, description: 'Tasa IVA (%)' })
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @IsOptional()
+  ivaRate?: number;
+
+  @ApiPropertyOptional({ example: 19 })
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)

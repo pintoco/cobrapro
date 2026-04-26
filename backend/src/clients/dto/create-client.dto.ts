@@ -5,18 +5,14 @@ import {
   IsOptional,
   IsString,
   MaxLength,
-  MinLength,
-  Matches,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 
 export enum DocumentType {
-  DNI = 'DNI',
-  RUC = 'RUC',
-  PASSPORT = 'PASSPORT',
-  CE = 'CE',
-  OTHER = 'OTHER',
+  RUT       = 'RUT',
+  PASAPORTE = 'PASAPORTE',
+  OTRO      = 'OTRO',
 }
 
 export class CreateClientDto {
@@ -34,48 +30,90 @@ export class CreateClientDto {
   @Transform(({ value }) => value?.trim())
   lastName: string;
 
-  @ApiProperty({ example: 'carlos@gmail.com' })
+  // ── Campos Chile ──
+
+  @ApiPropertyOptional({ example: '12.345.678-9' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(20)
+  rut?: string;
+
+  @ApiPropertyOptional({ example: 'Constructora Mendoza SpA' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(200)
+  @Transform(({ value }) => value?.trim())
+  razonSocial?: string;
+
+  @ApiPropertyOptional({ example: 'Construmendoza' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(200)
+  @Transform(({ value }) => value?.trim())
+  nombreFantasia?: string;
+
+  @ApiPropertyOptional({ example: 'Construcción de obras civiles' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(200)
+  giro?: string;
+
+  @ApiPropertyOptional({ example: 'Juan Pérez' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(200)
+  contactoPrincipal?: string;
+
+  // ── Contacto ──
+
+  @ApiProperty({ example: 'carlos@empresa.cl' })
   @IsEmail()
   @IsNotEmpty()
   @Transform(({ value }) => value?.toLowerCase().trim())
   email: string;
 
-  @ApiPropertyOptional({ example: '+51 999 777 555' })
+  @ApiPropertyOptional({ example: '+56 9 8765 4321' })
   @IsString()
   @IsOptional()
   @MaxLength(30)
   phone?: string;
 
-  @ApiPropertyOptional({ enum: DocumentType, default: DocumentType.DNI })
+  @ApiPropertyOptional({ enum: DocumentType, default: DocumentType.RUT })
   @IsEnum(DocumentType)
   @IsOptional()
   documentType?: DocumentType;
 
-  @ApiPropertyOptional({ example: '12345678' })
+  @ApiPropertyOptional({ example: '12345678-9' })
   @IsString()
   @IsOptional()
   @MaxLength(20)
   documentNumber?: string;
 
-  @ApiPropertyOptional({ example: 'Av. Los Olivos 456, San Isidro' })
+  @ApiPropertyOptional({ example: 'Av. Apoquindo 4501, Las Condes' })
   @IsString()
   @IsOptional()
   @MaxLength(300)
   address?: string;
 
-  @ApiPropertyOptional({ example: 'Lima' })
+  @ApiPropertyOptional({ example: 'Las Condes' })
   @IsString()
   @IsOptional()
   @MaxLength(100)
-  city?: string;
+  comuna?: string;
 
-  @ApiPropertyOptional({ example: 'PE', default: 'PE' })
+  @ApiPropertyOptional({ example: 'Santiago' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  ciudad?: string;
+
+  @ApiPropertyOptional({ example: 'CL', default: 'CL' })
   @IsString()
   @IsOptional()
   @MaxLength(3)
   country?: string;
 
-  @ApiPropertyOptional({ example: 'Cliente VIP, pago preferido: transferencia' })
+  @ApiPropertyOptional({ example: 'Pago preferido: transferencia. Contactar solo mañanas.' })
   @IsString()
   @IsOptional()
   @MaxLength(1000)

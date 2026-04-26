@@ -10,89 +10,91 @@ import {
   Query,
   HttpCode,
   HttpStatus,
-  UseGuards,
+  Request,
 } from '@nestjs/common';
 import {
   ApiTags,
   ApiBearerAuth,
   ApiOperation,
   ApiParam,
-  ApiQuery,
-  ApiResponse,
 } from '@nestjs/swagger';
 import { ClientsService } from './clients.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { QueryClientDto, ClientStatus } from './dto/query-client.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser, JwtPayload } from '../auth/decorators/current-user.decorator';
 import { Role } from '../common/enums/role.enum';
 
+function auditCtx(req: any) {
+  return {
+    userId: req.user?.sub,
+    ipAddress: req.ip,
+    userAgent: req.headers?.['user-agent'],
+  };
+}
+
 @ApiTags('Clients')
 @ApiBearerAuth()
 @Controller('clients')
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN_EMPRESA, Role.OPERADOR, Role.SUPER_ADMIN)
 export class ClientsController {
   constructor(private readonly clientsService: ClientsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List clients with pagination and filters' })
-  @ApiResponse({ status: 200, description: 'Paginated client list' })
+  @ApiOperation({ summary: 'Listar clientes con paginación y filtros' })
   findAll(@Query() query: QueryClientDto, @CurrentUser() user: JwtPayload) {
     return this.clientsService.findAll(user.companyId, query);
   }
 
   @Get('stats')
-  @ApiOperation({ summary: 'Get client statistics for the company' })
+  @ApiOperation({ summary: 'Estadísticas de clientes de la empresa' })
   getStats(@CurrentUser() user: JwtPayload) {
     return this.clientsService.getStats(user.companyId);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get a single client by ID' })
+  @ApiOperation({ summary: 'Obtener un cliente por ID' })
   @ApiParam({ name: 'id', description: 'Client ID' })
   findOne(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.clientsService.findOne(id, user.companyId);
   }
 
   @Post()
-  @ApiOperation({ summary: 'Create a new client' })
-  @ApiResponse({ status: 201, description: 'Client created' })
-  @ApiResponse({ status: 409, description: 'Email or document already registered' })
-  create(@Body() dto: CreateClientDto, @CurrentUser() user: JwtPayload) {
-    return this.clientsService.create(dto, user.companyId);
+  @ApiOperation({ summary: 'Crear cliente' })
+  create(@Body() dto: CreateClientDto, @CurrentUser() user: JwtPayload, @Request() req: any) {
+    return this.clientsService.create(dto, user.companyId, auditCtx(req));
   }
 
   @Put(':id')
-  @ApiOperation({ summary: 'Full update of a client' })
+  @ApiOperation({ summary: 'Actualizar cliente' })
   update(
     @Param('id') id: string,
     @Body() dto: UpdateClientDto,
     @CurrentUser() user: JwtPayload,
+    @Request() req: any,
   ) {
-    return this.clientsService.update(id, dto, user.companyId);
+    return this.clientsService.update(id, dto, user.companyId, auditCtx(req));
   }
 
   @Patch(':id/status')
   @Roles(Role.ADMIN_EMPRESA, Role.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Change client status (ACTIVE | INACTIVE | BLOCKED)' })
+  @ApiOperation({ summary: 'Cambiar estado de cliente (ACTIVE | INACTIVE | BLOCKED)' })
   @ApiParam({ name: 'id', description: 'Client ID' })
   changeStatus(
     @Param('id') id: string,
     @Body('status') status: ClientStatus,
     @CurrentUser() user: JwtPayload,
+    @Request() req: any,
   ) {
-    return this.clientsService.changeStatus(id, status, user.companyId);
+    return this.clientsService.changeStatus(id, status, user.companyId, auditCtx(req));
   }
 
   @Delete(':id')
   @Roles(Role.ADMIN_EMPRESA, Role.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Delete a client (ADMIN only)' })
-  remove(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
-    return this.clientsService.remove(id, user.companyId);
+  @ApiOperation({ summary: 'Eliminar cliente (solo ADMIN)' })
+  remove(@Param('id') id: string, @CurrentUser() user: JwtPayload, @Request() req: any) {
+    return this.clientsService.remove(id, user.companyId, auditCtx(req));
   }
 }

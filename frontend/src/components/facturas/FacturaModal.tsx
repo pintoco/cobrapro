@@ -13,18 +13,20 @@ import type { Client } from '@/types';
 const itemSchema = z.object({
   description: z.string().min(1, 'Requerido'),
   quantity:    z.coerce.number().min(1, 'Mín 1'),
-  unitPrice:   z.coerce.number().min(0.01, 'Mín 0.01'),
+  unitPrice:   z.coerce.number().min(1, 'Mín 1'),
 });
 
 const schema = z.object({
-  clientId:   z.string().min(1, 'Selecciona un cliente'),
-  issueDate:  z.string().min(1, 'Requerido'),
-  dueDate:    z.string().min(1, 'Requerido'),
-  currency:   z.string().default('PEN'),
-  taxRate:    z.coerce.number().min(0).max(100).default(18),
-  discount:   z.coerce.number().min(0).default(0),
-  notes:      z.string().optional(),
-  items:      z.array(itemSchema).min(1, 'Agrega al menos un ítem'),
+  clientId:      z.string().min(1, 'Selecciona un cliente'),
+  tipoDocumento: z.enum(['FACTURA', 'BOLETA', 'NOTA_COBRO', 'OTRO']).default('FACTURA'),
+  folio:         z.string().optional(),
+  issueDate:     z.string().min(1, 'Requerido'),
+  dueDate:       z.string().min(1, 'Requerido'),
+  currency:      z.string().default('CLP'),
+  ivaRate:       z.coerce.number().min(0).max(100).default(19),
+  discount:      z.coerce.number().min(0).default(0),
+  notes:         z.string().optional(),
+  items:         z.array(itemSchema).min(1, 'Agrega al menos un ítem'),
 });
 
 export type FacturaFormData = z.infer<typeof schema>;
@@ -36,40 +38,36 @@ interface Props {
   loading?: boolean;
 }
 
-function today() {
-  return new Date().toISOString().slice(0, 10);
-}
+function today() { return new Date().toISOString().slice(0, 10); }
 function inDays(n: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
+  const d = new Date(); d.setDate(d.getDate() + n);
   return d.toISOString().slice(0, 10);
 }
 
 export function FacturaModal({ open, onClose, onSubmit, loading }: Props) {
-  const {
-    register, handleSubmit, control, reset, formState: { errors },
-  } = useForm<FacturaFormData>({
+  const { register, handleSubmit, control, reset, formState: { errors } } = useForm<FacturaFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      clientId: '', issueDate: today(), dueDate: inDays(30),
-      currency: 'PEN', taxRate: 18, discount: 0, notes: '',
+      clientId: '', tipoDocumento: 'FACTURA', folio: '',
+      issueDate: today(), dueDate: inDays(30),
+      currency: 'CLP', ivaRate: 19, discount: 0, notes: '',
       items: [{ description: '', quantity: 1, unitPrice: 0 }],
     },
   });
 
   const { fields, append, remove } = useFieldArray({ control, name: 'items' });
-
-  const watchedItems   = useWatch({ control, name: 'items' });
-  const watchedTax     = useWatch({ control, name: 'taxRate' });
+  const watchedItems    = useWatch({ control, name: 'items' });
+  const watchedIvaRate  = useWatch({ control, name: 'ivaRate' });
   const watchedDiscount = useWatch({ control, name: 'discount' });
 
+  // Cálculo al estilo chileno: neto + IVA
   const subtotal = (watchedItems ?? []).reduce(
-    (s, item) => s + (Number(item?.quantity ?? 0) * Number(item?.unitPrice ?? 0)),
-    0,
+    (s, item) => s + (Number(item?.quantity ?? 0) * Number(item?.unitPrice ?? 0)), 0,
   );
-  const taxAmt  = subtotal * (Number(watchedTax ?? 0) / 100);
   const disc    = Number(watchedDiscount ?? 0);
-  const total   = subtotal + taxAmt - disc;
+  const neto    = Math.max(0, subtotal - disc);
+  const iva     = Math.round(neto * (Number(watchedIvaRate ?? 19) / 100) * 100) / 100;
+  const total   = neto + iva;
 
   const { data: clientsData } = useQuery({
     queryKey: ['clients-select'],
@@ -80,8 +78,9 @@ export function FacturaModal({ open, onClose, onSubmit, loading }: Props) {
   useEffect(() => {
     if (!open) return;
     reset({
-      clientId: '', issueDate: today(), dueDate: inDays(30),
-      currency: 'PEN', taxRate: 18, discount: 0, notes: '',
+      clientId: '', tipoDocumento: 'FACTURA', folio: '',
+      issueDate: today(), dueDate: inDays(30),
+      currency: 'CLP', ivaRate: 19, discount: 0, notes: '',
       items: [{ description: '', quantity: 1, unitPrice: 0 }],
     });
   }, [open, reset]);
@@ -100,21 +99,39 @@ export function FacturaModal({ open, onClose, onSubmit, loading }: Props) {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-5">
-          {/* Client */}
+          {/* Cliente */}
           <div>
             <label className="label">Cliente *</label>
             <select {...register('clientId')} className={cn('select', errors.clientId && 'border-red-400')}>
               <option value="">Seleccionar cliente...</option>
               {(clientsData ?? []).map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.firstName} {c.lastName} — {c.documentNumber}
+                  {c.razonSocial ?? `${c.firstName} ${c.lastName}`}
+                  {c.rut ? ` — ${c.rut}` : c.documentNumber ? ` — ${c.documentNumber}` : ''}
                 </option>
               ))}
             </select>
             {errors.clientId && <p className="text-red-500 text-xs mt-1">{errors.clientId.message}</p>}
           </div>
 
-          {/* Dates + Currency */}
+          {/* Tipo documento + Folio */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Tipo documento</label>
+              <select {...register('tipoDocumento')} className="select">
+                <option value="FACTURA">Factura</option>
+                <option value="BOLETA">Boleta</option>
+                <option value="NOTA_COBRO">Nota de Cobro</option>
+                <option value="OTRO">Otro</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Folio (opcional)</label>
+              <input {...register('folio')} className="input" placeholder="000123" />
+            </div>
+          </div>
+
+          {/* Fechas + Moneda */}
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="label">Fecha emisión</label>
@@ -127,13 +144,14 @@ export function FacturaModal({ open, onClose, onSubmit, loading }: Props) {
             <div>
               <label className="label">Moneda</label>
               <select {...register('currency')} className="select">
-                <option value="PEN">PEN (S/)</option>
+                <option value="CLP">CLP ($)</option>
                 <option value="USD">USD ($)</option>
+                <option value="EUR">EUR (€)</option>
               </select>
             </div>
           </div>
 
-          {/* Items */}
+          {/* Ítems */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="label mb-0">Ítems *</label>
@@ -163,26 +181,18 @@ export function FacturaModal({ open, onClose, onSubmit, loading }: Props) {
                   </div>
                   <div className="col-span-2">
                     {idx === 0 && <p className="text-xs text-gray-500 mb-1">Cant.</p>}
-                    <input
-                      {...register(`items.${idx}.quantity`)}
-                      type="number" min="1"
-                      className={cn('input text-xs', errors.items?.[idx]?.quantity && 'border-red-400')}
-                    />
+                    <input {...register(`items.${idx}.quantity`)} type="number" min="1"
+                      className={cn('input text-xs', errors.items?.[idx]?.quantity && 'border-red-400')} />
                   </div>
                   <div className="col-span-3">
-                    {idx === 0 && <p className="text-xs text-gray-500 mb-1">P. unitario</p>}
-                    <input
-                      {...register(`items.${idx}.unitPrice`)}
-                      type="number" step="0.01" min="0"
-                      className={cn('input text-xs', errors.items?.[idx]?.unitPrice && 'border-red-400')}
-                    />
+                    {idx === 0 && <p className="text-xs text-gray-500 mb-1">Precio unit. (CLP)</p>}
+                    <input {...register(`items.${idx}.unitPrice`)} type="number" step="1" min="0"
+                      className={cn('input text-xs', errors.items?.[idx]?.unitPrice && 'border-red-400')} />
                   </div>
                   <div className="col-span-1 flex items-end justify-center pb-0.5">
                     {idx === 0 && <div className="mb-1 h-4" />}
                     <p className="text-xs text-gray-500 font-medium text-right">
-                      {formatCurrency(
-                        Number(watchedItems?.[idx]?.quantity ?? 0) * Number(watchedItems?.[idx]?.unitPrice ?? 0)
-                      )}
+                      {formatCurrency(Number(watchedItems?.[idx]?.quantity ?? 0) * Number(watchedItems?.[idx]?.unitPrice ?? 0))}
                     </p>
                   </div>
                   <div className="col-span-1 flex items-end justify-center">
@@ -198,37 +208,41 @@ export function FacturaModal({ open, onClose, onSubmit, loading }: Props) {
             </div>
           </div>
 
-          {/* Tax + Discount */}
+          {/* IVA + Descuento */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">IGV / IVA (%)</label>
-              <input {...register('taxRate')} type="number" step="0.01" min="0" max="100" className="input" />
+              <label className="label">IVA (%)</label>
+              <input {...register('ivaRate')} type="number" step="0.01" min="0" max="100" className="input" />
+              <p className="text-xs text-gray-400 mt-1">19% estándar Chile</p>
             </div>
             <div>
-              <label className="label">Descuento</label>
-              <input {...register('discount')} type="number" step="0.01" min="0" className="input" />
+              <label className="label">Descuento (CLP)</label>
+              <input {...register('discount')} type="number" step="1" min="0" className="input" />
             </div>
           </div>
 
-          {/* Totals */}
+          {/* Totales al estilo chileno */}
           <div className="bg-gray-50 rounded-xl p-4 space-y-1.5 text-sm">
             <div className="flex justify-between text-gray-600">
               <span>Subtotal</span><span>{formatCurrency(subtotal)}</span>
             </div>
-            <div className="flex justify-between text-gray-600">
-              <span>IGV ({watchedTax}%)</span><span>{formatCurrency(taxAmt)}</span>
-            </div>
             {disc > 0 && (
               <div className="flex justify-between text-gray-600">
-                <span>Descuento</span><span>- {formatCurrency(disc)}</span>
+                <span>Descuento</span><span className="text-red-600">- {formatCurrency(disc)}</span>
               </div>
             )}
+            <div className="flex justify-between text-gray-600">
+              <span>Neto</span><span>{formatCurrency(neto)}</span>
+            </div>
+            <div className="flex justify-between text-gray-600">
+              <span>IVA ({watchedIvaRate}%)</span><span>{formatCurrency(iva)}</span>
+            </div>
             <div className="flex justify-between font-bold text-gray-900 pt-2 border-t border-gray-200">
               <span>Total</span><span>{formatCurrency(total)}</span>
             </div>
           </div>
 
-          {/* Notes */}
+          {/* Notas */}
           <div>
             <label className="label">Notas</label>
             <textarea {...register('notes')} rows={2} className="input resize-none" placeholder="Condiciones de pago, referencias..." />
@@ -240,7 +254,7 @@ export function FacturaModal({ open, onClose, onSubmit, loading }: Props) {
               {loading ? (
                 <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Creando...</>
               ) : (
-                'Crear factura'
+                'Crear documento'
               )}
             </button>
           </div>

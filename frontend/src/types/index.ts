@@ -18,18 +18,26 @@ export interface LoginResponse {
 
 // Clients
 export type ClientStatus = 'ACTIVE' | 'INACTIVE' | 'BLOCKED';
-export type DocumentType = 'DNI' | 'RUC' | 'CE' | 'PASSPORT';
+export type DocumentType = 'RUT' | 'PASAPORTE' | 'OTRO';
 
 export interface Client {
   id: string;
   firstName: string;
   lastName: string;
+  // Campos Chile
+  rut?: string;
+  razonSocial?: string;
+  nombreFantasia?: string;
+  giro?: string;
+  contactoPrincipal?: string;
+  // Contacto
   email: string;
   phone?: string;
   documentType: DocumentType;
-  documentNumber: string;
+  documentNumber?: string;
   address?: string;
-  city?: string;
+  ciudad?: string;
+  comuna?: string;
   country: string;
   status: ClientStatus;
   notes?: string;
@@ -40,6 +48,8 @@ export interface Client {
 
 // Invoices
 export type InvoiceStatus = 'PENDING' | 'PAID' | 'OVERDUE' | 'CANCELLED' | 'PARTIAL';
+export type InvoiceDocumentType = 'FACTURA' | 'BOLETA' | 'NOTA_COBRO' | 'OTRO';
+export type PaymentPromiseStatus = 'PENDIENTE' | 'CUMPLIDA' | 'INCUMPLIDA';
 
 export interface InvoiceItem {
   id?: string;
@@ -52,16 +62,27 @@ export interface InvoiceItem {
 export interface Invoice {
   id: string;
   invoiceNumber: string;
+  folio?: string;
+  tipoDocumento: InvoiceDocumentType;
   status: InvoiceStatus;
   issueDate: string;
   dueDate: string;
   subtotal: number;
+  ivaRate: number;
+  neto: number;
+  iva: number;
+  // Legacy
   taxRate: number;
   taxAmount: number;
   discount: number;
   total: number;
   currency: string;
   notes?: string;
+  // Promesa de pago
+  fechaPromesaPago?: string;
+  comentarioPromesa?: string;
+  estadoPromesa?: PaymentPromiseStatus;
+  // Timestamps
   paidAt?: string;
   cancelledAt?: string;
   overdueAt?: string;
@@ -73,7 +94,15 @@ export interface Invoice {
 }
 
 // Payments
-export type PaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'CHECK' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'YAPE' | 'PLIN' | 'OTHER';
+export type PaymentMethod =
+  | 'CASH'
+  | 'BANK_TRANSFER'
+  | 'CHECK'
+  | 'CREDIT_CARD'
+  | 'DEBIT_CARD'
+  | 'WEBPAY'
+  | 'TRANSFERENCIA_ELECTRONICA'
+  | 'OTHER';
 
 export interface Payment {
   id: string;
@@ -86,6 +115,68 @@ export interface Payment {
   invoiceId: string;
   clientId: string;
   companyId: string;
+  createdAt: string;
+}
+
+// Subscriptions
+export type SubscriptionStatus = 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'SUSPENDED' | 'CANCELLED';
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  priceCLP: number;
+  maxUsers: number;
+  maxClients: number;
+  maxInvoicesPerMonth: number;
+  allowWhatsApp: boolean;
+  allowExcelImport: boolean;
+  allowAdvancedReports: boolean;
+  isActive: boolean;
+}
+
+export interface CompanySubscription {
+  id: string;
+  status: SubscriptionStatus;
+  trialEndsAt?: string;
+  currentPeriodStart: string;
+  currentPeriodEnd?: string;
+  plan: SubscriptionPlan;
+}
+
+// Collection Notes
+export interface CollectionNote {
+  id: string;
+  note: string;
+  invoiceId: string;
+  clientId: string;
+  companyId: string;
+  userId?: string;
+  user?: { id: string; firstName: string; lastName: string };
+  createdAt: string;
+}
+
+// Audit
+export type AuditAction =
+  | 'CREATE'
+  | 'UPDATE'
+  | 'DELETE'
+  | 'STATUS_CHANGE'
+  | 'LOGIN'
+  | 'LOGOUT'
+  | 'SEND_NOTIFICATION'
+  | 'IMPORT';
+
+export interface AuditLog {
+  id: string;
+  action: AuditAction;
+  entity: string;
+  entityId?: string;
+  oldValue?: any;
+  newValue?: any;
+  ipAddress?: string;
+  companyId: string;
+  userId?: string;
+  user?: { id: string; firstName: string; lastName: string; email: string };
   createdAt: string;
 }
 

@@ -129,3 +129,54 @@ export const dashboardApi = {
   getDelinquentClients:(limit = 10) => api.get('/dashboard/delinquent-clients', { params: { limit } }),
   getMonthlyCollections:(months = 12) => api.get('/dashboard/monthly-collections', { params: { months } }),
 };
+
+// ── Collection Notes ──────────────────────────────────────────────────────────
+export const collectionNotesApi = {
+  create:        (data: any) => api.post('/collection-notes', data),
+  getByInvoice:  (invoiceId: string) => api.get(`/collection-notes/invoice/${invoiceId}`),
+  updatePromise: (invoiceId: string, data: any) => api.post(`/collection-notes/invoice/${invoiceId}/promise`, data),
+  remove:        (id: string) => api.delete(`/collection-notes/${id}`),
+};
+
+// ── Subscriptions ─────────────────────────────────────────────────────────────
+export const subscriptionsApi = {
+  getPlans:     () => api.get('/subscriptions/plans'),
+  getMy:        () => api.get('/subscriptions/my'),
+  subscribe:    (planId: string) => api.post(`/subscriptions/my/plan/${planId}`),
+};
+
+// ── Import ────────────────────────────────────────────────────────────────────
+export const importApi = {
+  clientsTemplate:  () => api.get('/import/templates/clients', { responseType: 'blob' }),
+  invoicesTemplate: () => api.get('/import/templates/invoices', { responseType: 'blob' }),
+  importClients:    (file: File, dryRun = true) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post(`/import/clients?dryRun=${dryRun}`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  importInvoices: (file: File, dryRun = true) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post(`/import/invoices?dryRun=${dryRun}`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+};
+
+// ── Audit ─────────────────────────────────────────────────────────────────────
+export const auditApi = {
+  getAll: (params?: Record<string, any>) => api.get('/audit-logs', { params }),
+};
+
+// ── Admin (Super Admin) ───────────────────────────────────────────────────────
+export const adminApi = {
+  getMetrics:          () => api.get('/admin/metrics'),
+  listCompanies:       (params?: any) => api.get('/admin/companies', { params }),
+  getCompany:          (id: string) => api.get(`/admin/companies/${id}`),
+  changeCompanyStatus: (id: string, status: string) => api.patch(`/admin/companies/${id}/status`, { status }),
+  listPlans:           () => api.get('/admin/plans'),
+  createPlan:          (data: any) => api.post('/admin/plans', data),
+  updatePlan:          (id: string, data: any) => api.patch(`/admin/plans/${id}`, data),
+};

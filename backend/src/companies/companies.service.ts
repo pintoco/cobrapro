@@ -41,10 +41,10 @@ export class CompaniesService {
     const existing = await this.prisma.company.findUnique({ where: { slug } });
     const finalSlug = existing ? `${slug}-${Date.now()}` : slug;
 
-    if (dto.ruc) {
-      const rucExists = await this.prisma.company.findUnique({ where: { ruc: dto.ruc } });
-      if (rucExists) {
-        throw new ConflictException('RUC already registered');
+    if (dto.rutEmpresa) {
+      const rutExists = await this.prisma.company.findUnique({ where: { rutEmpresa: dto.rutEmpresa } });
+      if (rutExists) {
+        throw new ConflictException('RUT de empresa ya registrado');
       }
     }
 

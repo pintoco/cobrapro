@@ -12,14 +12,14 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 export enum PaymentMethod {
-  CASH = 'CASH',
-  BANK_TRANSFER = 'BANK_TRANSFER',
-  CHECK = 'CHECK',
-  CREDIT_CARD = 'CREDIT_CARD',
-  DEBIT_CARD = 'DEBIT_CARD',
-  YAPE = 'YAPE',
-  PLIN = 'PLIN',
-  OTHER = 'OTHER',
+  CASH                      = 'CASH',
+  BANK_TRANSFER             = 'BANK_TRANSFER',
+  CHECK                     = 'CHECK',
+  CREDIT_CARD               = 'CREDIT_CARD',
+  DEBIT_CARD                = 'DEBIT_CARD',
+  WEBPAY                    = 'WEBPAY',
+  TRANSFERENCIA_ELECTRONICA = 'TRANSFERENCIA_ELECTRONICA',
+  OTHER                     = 'OTHER',
 }
 
 export class CreatePaymentDto {
@@ -28,7 +28,7 @@ export class CreatePaymentDto {
   @IsNotEmpty()
   invoiceId: string;
 
-  @ApiProperty({ example: 850.00, description: 'Amount paid (must be > 0)' })
+  @ApiProperty({ example: 50000, description: 'Monto pagado en CLP (> 0)' })
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0.01)
@@ -39,18 +39,18 @@ export class CreatePaymentDto {
   @IsOptional()
   method?: PaymentMethod;
 
-  @ApiPropertyOptional({ example: '2025-04-25', description: 'Payment date. Defaults to today.' })
+  @ApiPropertyOptional({ example: '2025-04-25', description: 'Fecha pago. Default: hoy.' })
   @IsDateString()
   @IsOptional()
   paymentDate?: string;
 
-  @ApiPropertyOptional({ example: 'TXN-20250425-001', description: 'Bank reference or receipt number' })
+  @ApiPropertyOptional({ example: 'TXN-20250425-001' })
   @IsString()
   @IsOptional()
   @MaxLength(200)
   reference?: string;
 
-  @ApiPropertyOptional({ example: 'Pago parcial cuota 1 de 2' })
+  @ApiPropertyOptional({ example: 'Abono cuota 1 de 3' })
   @IsString()
   @IsOptional()
   @MaxLength(500)

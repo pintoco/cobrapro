@@ -8,11 +8,14 @@ import { Header } from '@/components/layout/Header';
 import { useAuthStore } from '@/store/auth.store';
 
 const PAGE_TITLES: Record<string, string> = {
-  '/':                'Dashboard',
-  '/clientes':        'Clientes',
-  '/facturas':        'Facturas',
-  '/pagos':           'Pagos',
-  '/notificaciones':  'Notificaciones',
+  '/':                   'Dashboard',
+  '/clientes':           'Clientes',
+  '/facturas':           'Facturas',
+  '/pagos':              'Pagos',
+  '/notificaciones':     'Notificaciones',
+  '/admin/metricas':     'Métricas Globales',
+  '/admin/empresas':     'Empresas',
+  '/admin/planes':       'Planes SaaS',
 };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

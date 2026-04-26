@@ -2,7 +2,6 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateClientDto } from './dto/create-client.dto';
@@ -10,10 +9,16 @@ import { UpdateClientDto } from './dto/update-client.dto';
 import { QueryClientDto, ClientStatus } from './dto/query-client.dto';
 import { paginate } from '../common/dto/pagination.dto';
 import { Prisma } from '@prisma/client';
+import { AuditService } from '../audit/audit.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
 @Injectable()
 export class ClientsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+    private readonly subscriptions: SubscriptionsService,
+  ) {}
 
   async findAll(companyId: string, query: QueryClientDto) {
     const { search, status, city, skip, limit, page } = query;
@@ -21,7 +26,12 @@ export class ClientsService {
     const where: Prisma.ClientWhereInput = {
       companyId,
       ...(status && { status }),
-      ...(city && { city: { contains: city, mode: 'insensitive' } }),
+      ...(city && {
+        OR: [
+          { ciudad: { contains: city, mode: 'insensitive' } },
+          { city: { contains: city, mode: 'insensitive' } },
+        ],
+      }),
       ...(search && {
         OR: [
           { firstName: { contains: search, mode: 'insensitive' } },
@@ -29,6 +39,9 @@ export class ClientsService {
           { email: { contains: search, mode: 'insensitive' } },
           { documentNumber: { contains: search, mode: 'insensitive' } },
           { phone: { contains: search, mode: 'insensitive' } },
+          { rut: { contains: search, mode: 'insensitive' } },
+          { razonSocial: { contains: search, mode: 'insensitive' } },
+          { nombreFantasia: { contains: search, mode: 'insensitive' } },
         ],
       }),
     };
@@ -52,13 +65,18 @@ export class ClientsService {
     });
 
     if (!client) {
-      throw new NotFoundException(`Client ${id} not found`);
+      throw new NotFoundException(`Cliente ${id} no encontrado`);
     }
 
     return { data: client };
   }
 
-  async create(dto: CreateClientDto, companyId: string) {
+  async create(
+    dto: CreateClientDto,
+    companyId: string,
+    auditCtx?: { userId?: string; ipAddress?: string; userAgent?: string },
+  ) {
+    await this.subscriptions.validateClientLimit(companyId);
     await this.checkEmailUniqueness(dto.email, companyId);
 
     if (dto.documentNumber) {
@@ -66,14 +84,30 @@ export class ClientsService {
     }
 
     const client = await this.prisma.client.create({
-      data: { ...dto, companyId },
+      data: { ...dto, companyId, country: dto.country ?? 'CL' },
     });
 
-    return { data: client, message: 'Client created successfully' };
+    if (auditCtx) {
+      await this.audit.log(
+        { companyId, ...auditCtx },
+        'CREATE',
+        'Client',
+        client.id,
+        undefined,
+        { id: client.id, email: client.email, firstName: client.firstName },
+      );
+    }
+
+    return { data: client, message: 'Cliente creado exitosamente' };
   }
 
-  async update(id: string, dto: UpdateClientDto, companyId: string) {
-    await this.findOne(id, companyId);
+  async update(
+    id: string,
+    dto: UpdateClientDto,
+    companyId: string,
+    auditCtx?: { userId?: string; ipAddress?: string; userAgent?: string },
+  ) {
+    const { data: existing } = await this.findOne(id, companyId);
 
     if (dto.email) {
       await this.checkEmailUniqueness(dto.email, companyId, id);
@@ -88,29 +122,67 @@ export class ClientsService {
       data: dto,
     });
 
-    return { data: client, message: 'Client updated successfully' };
+    if (auditCtx) {
+      await this.audit.log(
+        { companyId, ...auditCtx },
+        'UPDATE',
+        'Client',
+        id,
+        { email: existing.email, status: existing.status },
+        { email: client.email, status: client.status },
+      );
+    }
+
+    return { data: client, message: 'Cliente actualizado exitosamente' };
   }
 
-  async remove(id: string, companyId: string) {
-    await this.findOne(id, companyId);
+  async remove(
+    id: string,
+    companyId: string,
+    auditCtx?: { userId?: string; ipAddress?: string; userAgent?: string },
+  ) {
+    const { data: existing } = await this.findOne(id, companyId);
 
     await this.prisma.client.delete({ where: { id } });
 
-    return { data: null, message: 'Client deleted successfully' };
+    if (auditCtx) {
+      await this.audit.log(
+        { companyId, ...auditCtx },
+        'DELETE',
+        'Client',
+        id,
+        { email: existing.email },
+      );
+    }
+
+    return { data: null, message: 'Cliente eliminado exitosamente' };
   }
 
-  async changeStatus(id: string, status: ClientStatus, companyId: string) {
-    await this.findOne(id, companyId);
+  async changeStatus(
+    id: string,
+    status: ClientStatus,
+    companyId: string,
+    auditCtx?: { userId?: string; ipAddress?: string; userAgent?: string },
+  ) {
+    const { data: existing } = await this.findOne(id, companyId);
 
     const client = await this.prisma.client.update({
       where: { id },
       data: { status },
     });
 
-    return {
-      data: client,
-      message: `Client status changed to ${status}`,
-    };
+    if (auditCtx) {
+      await this.audit.log(
+        { companyId, ...auditCtx },
+        'STATUS_CHANGE',
+        'Client',
+        id,
+        { status: existing.status },
+        { status },
+      );
+    }
+
+    return { data: client, message: `Estado cambiado a ${status}` };
   }
 
   async getStats(companyId: string) {
@@ -121,20 +193,14 @@ export class ClientsService {
       this.prisma.client.count({ where: { companyId, status: 'BLOCKED' } }),
     ]);
 
-    return {
-      data: { total, active, inactive, blocked },
-    };
+    return { data: { total, active, inactive, blocked } };
   }
 
   // ─────────────────────────────────────────
   // PRIVATE HELPERS
   // ─────────────────────────────────────────
 
-  private async checkEmailUniqueness(
-    email: string,
-    companyId: string,
-    excludeId?: string,
-  ) {
+  private async checkEmailUniqueness(email: string, companyId: string, excludeId?: string) {
     const existing = await this.prisma.client.findFirst({
       where: {
         email,
@@ -144,17 +210,11 @@ export class ClientsService {
     });
 
     if (existing) {
-      throw new ConflictException(
-        `A client with email "${email}" already exists in this company`,
-      );
+      throw new ConflictException(`Ya existe un cliente con email "${email}" en esta empresa`);
     }
   }
 
-  private async checkDocumentUniqueness(
-    documentNumber: string,
-    companyId: string,
-    excludeId?: string,
-  ) {
+  private async checkDocumentUniqueness(documentNumber: string, companyId: string, excludeId?: string) {
     const existing = await this.prisma.client.findFirst({
       where: {
         documentNumber,
@@ -164,9 +224,7 @@ export class ClientsService {
     });
 
     if (existing) {
-      throw new ConflictException(
-        `A client with document "${documentNumber}" already exists in this company`,
-      );
+      throw new ConflictException(`Ya existe un cliente con documento "${documentNumber}" en esta empresa`);
     }
   }
 }

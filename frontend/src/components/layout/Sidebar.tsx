@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Users, FileText, CreditCard,
   Bell, ChevronLeft, ChevronRight, DollarSign, LogOut,
+  Building2, BarChart3, CreditCard as PlanIcon, Shield,
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
@@ -12,11 +13,17 @@ import { authApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 const NAV_ITEMS = [
-  { href: '/',             label: 'Dashboard',      icon: LayoutDashboard },
-  { href: '/clientes',     label: 'Clientes',        icon: Users           },
-  { href: '/facturas',     label: 'Facturas',        icon: FileText        },
-  { href: '/pagos',        label: 'Pagos',           icon: CreditCard      },
-  { href: '/notificaciones', label: 'Notificaciones', icon: Bell           },
+  { href: '/',               label: 'Dashboard',      icon: LayoutDashboard, adminOnly: false },
+  { href: '/clientes',       label: 'Clientes',        icon: Users,           adminOnly: false },
+  { href: '/facturas',       label: 'Facturas',        icon: FileText,        adminOnly: false },
+  { href: '/pagos',          label: 'Pagos',           icon: CreditCard,      adminOnly: false },
+  { href: '/notificaciones', label: 'Notificaciones',  icon: Bell,            adminOnly: false },
+];
+
+const ADMIN_ITEMS = [
+  { href: '/admin/metricas',  label: 'Métricas',   icon: BarChart3  },
+  { href: '/admin/empresas',  label: 'Empresas',   icon: Building2  },
+  { href: '/admin/planes',    label: 'Planes',     icon: PlanIcon   },
 ];
 
 interface Props {
@@ -28,6 +35,7 @@ export function Sidebar({ collapsed, onToggle }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, clearAuth } = useAuthStore();
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
   const handleLogout = async () => {
     try { await authApi.logout(); } catch { /* ignore */ }
@@ -72,6 +80,31 @@ export function Sidebar({ collapsed, onToggle }: Props) {
             </Link>
           );
         })}
+
+        {/* Super Admin nav */}
+        {isSuperAdmin && (
+          <>
+            {!collapsed && (
+              <p className="text-gray-500 text-xs uppercase tracking-wider px-3 pt-3 pb-1 flex items-center gap-1">
+                <Shield className="w-3 h-3" /> Admin
+              </p>
+            )}
+            {ADMIN_ITEMS.map(({ href, label, icon: Icon }) => {
+              const active = pathname.startsWith(href);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  title={collapsed ? label : undefined}
+                  className={cn('sidebar-link', active && 'active', collapsed && 'justify-center px-0')}
+                >
+                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  {!collapsed && <span>{label}</span>}
+                </Link>
+              );
+            })}
+          </>
+        )}
       </nav>
 
       {/* User + Logout */}

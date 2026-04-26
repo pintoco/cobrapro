@@ -160,13 +160,16 @@ export class InvoicesService {
 
     const dueDate = new Date(dto.dueDate);
     if (dueDate <= new Date()) {
-      throw new BadRequestException('Due date must be in the future');
+      throw new BadRequestException('La fecha de vencimiento debe ser futura');
     }
 
-    const { subtotal, taxAmount, total, items } = this.calculateTotals(
+    const ivaRate = dto.ivaRate ?? 19;
+    const discount = dto.discount ?? 0;
+
+    const { subtotal, neto, iva, total, items } = this.calculateChileanTotals(
       dto.items,
-      dto.taxRate ?? 0,
-      dto.discount ?? 0,
+      ivaRate,
+      discount,
     );
 
     const invoiceNumber = await this.generateInvoiceNumber(companyId);
@@ -178,21 +181,28 @@ export class InvoicesService {
         clientId: dto.clientId,
         dueDate,
         issueDate: dto.issueDate ? new Date(dto.issueDate) : new Date(),
+        tipoDocumento: dto.tipoDocumento ?? 'FACTURA',
+        folio: dto.folio,
         subtotal,
-        taxRate: dto.taxRate ?? 0,
-        taxAmount,
-        discount: dto.discount ?? 0,
+        ivaRate,
+        neto,
+        iva,
+        taxRate: ivaRate,
+        taxAmount: iva,
+        discount,
         total,
-        currency: dto.currency ?? 'PEN',
+        currency: dto.currency ?? 'CLP',
         notes: dto.notes,
+        fechaPromesaPago: dto.fechaPromesaPago ? new Date(dto.fechaPromesaPago) : undefined,
+        comentarioPromesa: dto.comentarioPromesa,
         items: { create: items },
       },
       include: INVOICE_INCLUDE,
     });
 
-    this.logger.log(`Invoice created: ${invoice.invoiceNumber} | Company: ${companyId}`);
+    this.logger.log(`Factura creada: ${invoice.invoiceNumber} | Empresa: ${companyId}`);
 
-    return { data: invoice, message: 'Invoice created successfully' };
+    return { data: invoice, message: 'Factura creada exitosamente' };
   }
 
   async update(id: string, dto: UpdateInvoiceDto, companyId: string) {
@@ -217,8 +227,8 @@ export class InvoicesService {
       ...(dto.notes !== undefined && { notes: dto.notes }),
     };
 
-    // Recalculate totals if items or tax/discount changed
-    if (dto.items || dto.taxRate !== undefined || dto.discount !== undefined) {
+    // Recalculate totals if items or iva/discount changed
+    if (dto.items || dto.ivaRate !== undefined || dto.discount !== undefined) {
       const currentItems = dto.items
         ? dto.items
         : existing.items.map((i) => ({
@@ -227,16 +237,19 @@ export class InvoicesService {
             unitPrice: Number(i.unitPrice),
           }));
 
-      const taxRate = dto.taxRate ?? Number(existing.taxRate);
+      const ivaRate = dto.ivaRate ?? Number((existing as any).ivaRate ?? 19);
       const discount = dto.discount ?? Number(existing.discount);
 
-      const { subtotal, taxAmount, total, items } = this.calculateTotals(
+      const { subtotal, neto, iva, total, items } = this.calculateChileanTotals(
         currentItems,
-        taxRate,
+        ivaRate,
         discount,
       );
 
-      Object.assign(updateData, { subtotal, taxRate, taxAmount, discount, total });
+      Object.assign(updateData, {
+        subtotal, neto, iva, ivaRate, discount, total,
+        taxRate: ivaRate, taxAmount: iva,
+      });
 
       if (dto.items) {
         await this.prisma.invoiceItem.deleteMany({ where: { invoiceId: id } });
@@ -310,9 +323,9 @@ export class InvoicesService {
   // PRIVATE HELPERS
   // ─────────────────────────────────────────
 
-  private calculateTotals(
+  private calculateChileanTotals(
     items: { description: string; quantity: number; unitPrice: number }[],
-    taxRate: number,
+    ivaRate: number,
     discount: number,
   ) {
     const processedItems = items.map((item) => ({
@@ -323,19 +336,16 @@ export class InvoicesService {
     }));
 
     const subtotal = processedItems.reduce((sum, i) => sum + i.amount, 0);
-    const taxAmount = Math.round(((subtotal - discount) * taxRate) / 100 * 100) / 100;
-    const total = Math.round((subtotal - discount + taxAmount) * 100) / 100;
+    const neto = Math.round((subtotal - discount) * 100) / 100;
 
-    if (total < 0) {
-      throw new BadRequestException('Discount cannot exceed the subtotal');
+    if (neto < 0) {
+      throw new BadRequestException('El descuento no puede superar el subtotal');
     }
 
-    return {
-      subtotal,
-      taxAmount,
-      total,
-      items: processedItems,
-    };
+    const iva = Math.round((neto * ivaRate) / 100 * 100) / 100;
+    const total = Math.round((neto + iva) * 100) / 100;
+
+    return { subtotal, neto, iva, total, items: processedItems };
   }
 
   private async generateInvoiceNumber(companyId: string): Promise<string> {
