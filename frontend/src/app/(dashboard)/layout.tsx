@@ -13,9 +13,19 @@ const PAGE_TITLES: Record<string, string> = {
   '/facturas':           'Facturas',
   '/pagos':              'Pagos',
   '/notificaciones':     'Notificaciones',
+  '/importar':           'Importar',
+  '/auditoria':          'Auditoría',
+  '/suscripcion':        'Suscripción',
   '/admin/metricas':     'Métricas Globales',
   '/admin/empresas':     'Empresas',
   '/admin/planes':       'Planes SaaS',
+};
+
+const getPageTitle = (pathname: string): string => {
+  if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
+  if (pathname.startsWith('/facturas/')) return 'Detalle de Factura';
+  if (pathname.startsWith('/clientes/')) return 'Detalle de Cliente';
+  return 'CobranzaPro';
 };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -32,7 +42,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!isAuthenticated && !Cookies.get('accessToken')) return null;
 
-  const title = PAGE_TITLES[pathname] ?? 'CobranzaPro';
+  const title = getPageTitle(pathname);
 
   return (
     <div className="h-screen flex overflow-hidden bg-gray-50">

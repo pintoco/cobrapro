@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import Link from 'next/link';
 import { Plus, Search, ChevronLeft, ChevronRight, MoreVertical, Edit2, Trash2, UserCheck, UserX } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { clientsApi } from '@/lib/api';
@@ -148,7 +149,12 @@ export default function ClientesPage() {
                             </span>
                           </div>
                           <div>
-                            <p className="font-medium text-gray-800">{c.firstName} {c.lastName}</p>
+                            <Link
+                              href={`/clientes/${c.id}`}
+                              className="font-medium text-brand-600 hover:underline"
+                            >
+                              {c.firstName} {c.lastName}
+                            </Link>
                             <p className="text-xs text-gray-400">{c.email}</p>
                           </div>
                         </div>

@@ -6,6 +6,7 @@ import {
   LayoutDashboard, Users, FileText, CreditCard,
   Bell, ChevronLeft, ChevronRight, DollarSign, LogOut,
   Building2, BarChart3, CreditCard as PlanIcon, Shield,
+  UploadCloud, ClipboardList, Package,
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
@@ -13,11 +14,14 @@ import { authApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 const NAV_ITEMS = [
-  { href: '/',               label: 'Dashboard',      icon: LayoutDashboard, adminOnly: false },
-  { href: '/clientes',       label: 'Clientes',        icon: Users,           adminOnly: false },
-  { href: '/facturas',       label: 'Facturas',        icon: FileText,        adminOnly: false },
-  { href: '/pagos',          label: 'Pagos',           icon: CreditCard,      adminOnly: false },
-  { href: '/notificaciones', label: 'Notificaciones',  icon: Bell,            adminOnly: false },
+  { href: '/',               label: 'Dashboard',      icon: LayoutDashboard },
+  { href: '/clientes',       label: 'Clientes',       icon: Users           },
+  { href: '/facturas',       label: 'Facturas',       icon: FileText        },
+  { href: '/pagos',          label: 'Pagos',          icon: CreditCard      },
+  { href: '/notificaciones', label: 'Notificaciones', icon: Bell            },
+  { href: '/importar',       label: 'Importar',       icon: UploadCloud     },
+  { href: '/auditoria',      label: 'Auditoría',      icon: ClipboardList   },
+  { href: '/suscripcion',    label: 'Suscripción',    icon: Package         },
 ];
 
 const ADMIN_ITEMS = [

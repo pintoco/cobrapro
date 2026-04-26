@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import Link from 'next/link';
 import {
   Plus, Search, ChevronLeft, ChevronRight,
   MoreVertical, XCircle, CheckCircle,
@@ -155,7 +156,12 @@ export default function FacturasPage() {
                   return (
                     <tr key={inv.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-5 py-4">
-                        <span className="font-mono text-xs text-gray-700 font-medium">{inv.invoiceNumber}</span>
+                        <Link
+                          href={`/facturas/${inv.id}`}
+                          className="font-mono text-xs text-brand-600 hover:underline font-medium"
+                        >
+                          {inv.invoiceNumber}
+                        </Link>
                       </td>
                       <td className="px-5 py-4">
                         {inv.client ? (
