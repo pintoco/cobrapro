@@ -35,7 +35,7 @@ export default function LoginPage() {
       const { data: responseData } = res.data;
       setAuth(responseData);
       toast.success(`Bienvenido, ${responseData.user.firstName}!`);
-      router.push('/dashboard');
+      router.push('/');
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Credenciales incorrectas');
     } finally {

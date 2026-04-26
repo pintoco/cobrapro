@@ -8,7 +8,7 @@ import { Header } from '@/components/layout/Header';
 import { useAuthStore } from '@/store/auth.store';
 
 const PAGE_TITLES: Record<string, string> = {
-  '/dashboard':       'Dashboard',
+  '/':                'Dashboard',
   '/clientes':        'Clientes',
   '/facturas':        'Facturas',
   '/pagos':           'Pagos',

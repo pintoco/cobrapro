@@ -12,7 +12,7 @@ import { authApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 const NAV_ITEMS = [
-  { href: '/dashboard',    label: 'Dashboard',      icon: LayoutDashboard },
+  { href: '/',             label: 'Dashboard',      icon: LayoutDashboard },
   { href: '/clientes',     label: 'Clientes',        icon: Users           },
   { href: '/facturas',     label: 'Facturas',        icon: FileText        },
   { href: '/pagos',        label: 'Pagos',           icon: CreditCard      },
@@ -59,7 +59,7 @@ export function Sidebar({ collapsed, onToggle }: Props) {
       {/* Nav */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
+          const active = pathname === href || (href !== '/' && pathname.startsWith(href));
           return (
             <Link
               key={href}
