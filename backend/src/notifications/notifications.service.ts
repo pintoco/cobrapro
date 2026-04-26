@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, NotificationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from './email.service';
 import {
@@ -198,7 +198,7 @@ export class NotificationsService {
   private async createNotificationRecord(
     invoice: any,
     rule: ReminderRule,
-    status: string,
+    status: NotificationStatus,
     company: any,
     subject: string,
     body: string,

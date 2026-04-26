@@ -4,7 +4,7 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, InvoiceStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { VoidPaymentDto } from './dto/void-payment.dto';
@@ -129,7 +129,7 @@ export class PaymentsService {
           _sum: { amount: true },
           _count: true,
         }),
-        this.prisma.payment.groupBy({
+        (this.prisma.payment.groupBy as any)({
           by: ['method'],
           where: { companyId, status: 'COMPLETED' },
           _sum: { amount: true },
@@ -271,7 +271,7 @@ export class PaymentsService {
       await tx.invoice.update({
         where: { id: payment.invoiceId },
         data: {
-          status: newInvoiceStatus,
+          status: newInvoiceStatus as InvoiceStatus,
           ...(newInvoiceStatus !== 'PAID' && { paidAt: null }),
         },
       });
