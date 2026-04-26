@@ -26,9 +26,10 @@ COPY --from=builder /app/package.json ./
 COPY --from=builder /app/package-lock.json* ./
 RUN npm ci --omit=dev
 
-# Copy built output
+# Copy built output and config
 COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/next.config.js ./
 
 EXPOSE 3000
 
-CMD ["node_modules/.bin/next", "start"]
+CMD ["sh", "-c", "node_modules/.bin/next start -p ${PORT:-3000}"]
