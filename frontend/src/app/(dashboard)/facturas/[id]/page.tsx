@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 import { invoicesApi, paymentsApi, collectionNotesApi } from '@/lib/api';
 import {
   cn, formatCurrency, formatDate,
-  INVOICE_STATUS_CONFIG, PAYMENT_METHOD_LABELS,
+  INVOICE_STATUS_CONFIG, PAYMENT_METHOD_LABELS, INVOICE_DOCUMENT_TYPE_LABELS,
 } from '@/lib/utils';
 import type { Invoice, Payment, CollectionNote, PaginatedResult } from '@/types';
 
@@ -178,7 +178,7 @@ export default function FacturaDetailPage() {
               <span className={`badge ${cfg.bg} ${cfg.color}`}>{cfg.label}</span>
             </div>
             <p className="text-sm text-gray-500">
-              {invoice.tipoDocumento}
+              {INVOICE_DOCUMENT_TYPE_LABELS[invoice.tipoDocumento] ?? invoice.tipoDocumento}
               {invoice.folio ? ` · Folio ${invoice.folio}` : ''}
             </p>
           </div>

@@ -6,7 +6,7 @@ SaaS multi-tenant de cobranza para **pymes chilenas**. Cada empresa (tenant) est
 
 Stack: NestJS 10 (backend) + Next.js 14 App Router (frontend) + Prisma 5 + PostgreSQL 16.
 
-### Versión 2.0 — Mejoras implementadas (8 fases)
+### Versión 2.0 — Mejoras implementadas (8 fases backend + 6 fases frontend)
 - **FASE 1**: Adaptación Chile — RUT, IVA 19%, moneda CLP, locale es-CL, tipoDocumento (FACTURA/BOLETA/NOTA_COBRO), folio
 - **FASE 2**: Planes SaaS — `SubscriptionPlan` + `CompanySubscription`. Planes: Básico $9.990, Pro $19.990, Empresa $49.990. Límites enforced en crear usuarios, clientes y facturas
 - **FASE 3**: Auditoría — `AuditLog` registra CREATE/UPDATE/DELETE/STATUS_CHANGE en clientes, facturas, pagos. Endpoint `GET /api/v1/audit-logs`
@@ -15,6 +15,18 @@ Stack: NestJS 10 (backend) + Next.js 14 App Router (frontend) + Prisma 5 + Postg
 - **FASE 6**: Arquitectura WhatsApp — `MessageTemplate`, `WhatsAppService` (stub), `NotificationChannel` enum EMAIL/WHATSAPP. Solo en plan Empresa. Preparado para Meta Cloud API, Twilio, 360dialog
 - **FASE 7**: Panel Super Admin — `GET /api/v1/admin/metrics|companies|plans`. Frontend `/admin/metricas`, `/admin/empresas`, `/admin/planes`. Visible solo para rol SUPER_ADMIN
 - **FASE 8**: Seguridad — `helmet` (HTTP headers), `ThrottlerModule` (100 req/60s por IP), CORS estricto con validación de origin
+- **FRONTEND FASE 1–2**: `/facturas/[id]` — detalle completo con ítems, historial de pagos, modal de pago, notas de cobranza, promesa de pago
+- **FRONTEND FASE 3**: `/importar` — importación Excel con dry-run preview, errores detallados y confirmación
+- **FRONTEND FASE 4**: `/clientes/[id]` — detalle de cliente con facturas asociadas y resumen de deuda
+- **FRONTEND FASE 5**: `/suscripcion` — gestión de plan/suscripción con comparación de planes
+- **FRONTEND FASE 6**: `/auditoria` — log de auditoría paginado con filtros
+
+### Bugs corregidos (últimas revisiones)
+- **TransformInterceptor**: la condición `'data' in obj && 'message' in obj` causaba doble-envolvimiento en respuestas sin `message`. Corregido para distinguir respuestas paginadas (tienen `meta.totalPages`) de respuestas de objeto único.
+- **Notificaciones**: el estado de paginación existía pero no tenía UI. Se agregaron controles de paginación.
+- **Facturas detail**: `tipoDocumento` mostraba el enum crudo en vez de la etiqueta legible.
+- **Dashboard**: números de factura vencida y nombres de clientes morosos no tenían link de navegación.
+- **Facturas list**: ignoraba el query param `clientId` de la URL (rompía el link "Ver todas" desde detalle de cliente).
 
 ---
 
@@ -45,6 +57,28 @@ npm run prisma:migrate  # create + apply a new migration (dev only)
 npm run prisma:seed     # seed the database (creates SUPER_ADMIN)
 npm run prisma:studio   # open Prisma Studio at localhost:5555
 ```
+
+### Response envelope — CRITICAL PATTERN
+
+All HTTP responses go through `TransformInterceptor` (`src/common/interceptors/transform.interceptor.ts`).
+
+**Rule**: Every service method that returns a single object, array, or stats object MUST return `{ data: X }` (with no `message` key for reads, or with `message` for mutations). The interceptor then spreads it into `{ success: true, data: X, message?: '...' }`.
+
+**Paginated responses** (`paginate()` return value has `meta.totalPages`) are kept wrapped as `{ success: true, data: PaginatedResult }` — the frontend accesses them via `r.data.data`.
+
+**Frontend access pattern**:
+```typescript
+// Paginated list  →  r.data.data = PaginatedResult<T>
+clientsApi.getAll(...).then((r) => r.data.data)   // → { data: T[], meta: {...} }
+
+// Single object   →  r.data.data = T
+clientsApi.getById(id).then((r) => r.data.data)   // → Client
+
+// Paginated client list for a select  →  r.data.data.data = T[]
+clientsApi.getAll({limit:200}).then((r) => r.data.data.data)
+```
+
+**Do NOT** return plain objects without wrapping in `{ data: X }` from services — the interceptor will re-wrap them differently.
 
 ### Architecture patterns
 
@@ -141,6 +175,11 @@ npm run lint    # Next.js ESLint
 | `src/components/layout/Sidebar.tsx` | Nav + admin section (visible solo SUPER_ADMIN) |
 | `src/components/clientes/ClienteModal.tsx` | Form con campos chilenos (RUT, razón social, giro, comuna) |
 | `src/components/facturas/FacturaModal.tsx` | Form con tipoDocumento, folio, ivaRate, totales CLP |
+| `src/app/(dashboard)/facturas/[id]/page.tsx` | Detalle factura + modal pago + notas + promesa |
+| `src/app/(dashboard)/clientes/[id]/page.tsx` | Detalle cliente + KPIs + lista facturas |
+| `src/app/(dashboard)/importar/page.tsx` | Importación Excel (dry-run + confirmación) |
+| `src/app/(dashboard)/suscripcion/page.tsx` | Plan actual + comparador de planes |
+| `src/app/(dashboard)/auditoria/page.tsx` | Log de auditoría paginado |
 | `src/app/(dashboard)/admin/metricas/page.tsx` | KPIs globales — SUPER_ADMIN |
 | `src/app/(dashboard)/admin/empresas/page.tsx` | Gestión empresas — SUPER_ADMIN |
 | `src/app/(dashboard)/admin/planes/page.tsx` | Planes y suscriptores — SUPER_ADMIN |

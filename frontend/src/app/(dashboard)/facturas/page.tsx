@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
   Plus, Search, ChevronLeft, ChevronRight,
   MoreVertical, XCircle, CheckCircle,
@@ -24,18 +25,31 @@ const STATUS_OPTIONS = [
 
 export default function FacturasPage() {
   const qc = useQueryClient();
-  const [page, setPage]       = useState(1);
-  const [search, setSearch]   = useState('');
-  const [status, setStatus]   = useState('');
-  const [modalOpen, setModal] = useState(false);
+  const searchParams = useSearchParams();
+  const [page, setPage]         = useState(1);
+  const [search, setSearch]     = useState('');
+  const [status, setStatus]     = useState('');
+  const [clientId, setClientId] = useState(searchParams.get('clientId') ?? '');
+  const [modalOpen, setModal]   = useState(false);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
-  const [saving, setSaving]   = useState(false);
+  const [saving, setSaving]     = useState(false);
+
+  useEffect(() => {
+    const id = searchParams.get('clientId') ?? '';
+    setClientId(id);
+    setPage(1);
+  }, [searchParams]);
 
   const { data, isLoading } = useQuery<PaginatedResult<Invoice>>({
-    queryKey: ['invoices', page, search, status],
+    queryKey: ['invoices', page, search, status, clientId],
     queryFn: () =>
-      invoicesApi.getAll({ page, limit: 15, search: search || undefined, status: status || undefined })
-        .then((r) => r.data.data),
+      invoicesApi.getAll({
+        page,
+        limit: 15,
+        search: search || undefined,
+        status: status || undefined,
+        clientId: clientId || undefined,
+      }).then((r) => r.data.data),
   });
 
   const cancelMutation = useMutation({

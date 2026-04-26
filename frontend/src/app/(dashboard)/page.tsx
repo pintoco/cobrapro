@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import Link from 'next/link';
 import { DollarSign, AlertTriangle, TrendingUp, Users, Clock } from 'lucide-react';
 import { dashboardApi } from '@/lib/api';
 import { KpiCard } from '@/components/dashboard/KpiCard';
@@ -111,9 +112,12 @@ export default function DashboardPage() {
               {delinquentList.map((c) => (
                 <div key={c.id} className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">
+                    <Link
+                      href={`/clientes/${c.id}`}
+                      className="text-sm font-medium text-brand-600 hover:underline truncate block"
+                    >
                       {c.firstName} {c.lastName}
-                    </p>
+                    </Link>
                     <p className="text-xs text-gray-400">
                       {c.overdueInvoicesCount} factura{c.overdueInvoicesCount !== 1 ? 's' : ''} · {c.maxDaysOverdue}d
                     </p>
@@ -156,7 +160,14 @@ export default function DashboardPage() {
               <tbody className="divide-y divide-gray-50">
                 {overdueList.map((inv) => (
                   <tr key={inv.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-5 py-3 font-mono text-xs text-gray-600">{inv.invoiceNumber}</td>
+                    <td className="px-5 py-3">
+                      <Link
+                        href={`/facturas/${inv.id}`}
+                        className="font-mono text-xs text-brand-600 hover:underline font-medium"
+                      >
+                        {inv.invoiceNumber}
+                      </Link>
+                    </td>
                     <td className="px-5 py-3">
                       <p className="font-medium text-gray-800">{inv.client.firstName} {inv.client.lastName}</p>
                       <p className="text-xs text-gray-400">{inv.client.email}</p>

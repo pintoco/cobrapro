@@ -88,9 +88,16 @@ cobrapro/
 │   │   │   └── (dashboard)/          ← mapea a /
 │   │   │       ├── page.tsx          Dashboard principal
 │   │   │       ├── clientes/
+│   │   │       │   ├── page.tsx      Lista de clientes
+│   │   │       │   └── [id]/         Detalle de cliente
 │   │   │       ├── facturas/
+│   │   │       │   ├── page.tsx      Lista de facturas (acepta ?clientId=)
+│   │   │       │   └── [id]/         Detalle + pago + notas + promesas
 │   │   │       ├── notificaciones/
 │   │   │       ├── pagos/
+│   │   │       ├── importar/         Importación Excel (dry-run + confirm)
+│   │   │       ├── suscripcion/      Plan actual + comparador
+│   │   │       ├── auditoria/        Log de auditoría paginado
 │   │   │       └── admin/            Solo SUPER_ADMIN
 │   │   │           ├── metricas/
 │   │   │           ├── empresas/
@@ -297,6 +304,30 @@ docker compose up postgres backend
 # Seed (planes de suscripción + SUPER_ADMIN)
 cd backend && npm run prisma:seed
 ```
+
+---
+
+## Bugs corregidos (revisión completa)
+
+| Bug | Archivo | Descripción |
+|-----|---------|-------------|
+| **TransformInterceptor** | `backend/src/common/interceptors/transform.interceptor.ts` | La condición `'message' in data` causaba doble-envolvimiento en respuestas sin `message` (findOne, getStats, etc.), rompiendo todas las páginas de detalle. Corregido distinguiendo respuestas paginadas (`meta.totalPages`) de objeto único. |
+| **Notificaciones sin paginación** | `frontend/…/notificaciones/page.tsx` | Estado de paginación existía pero no había controles UI. Agregados botones prev/next y contador. |
+| **tipoDocumento enum crudo** | `frontend/…/facturas/[id]/page.tsx` | Mostraba `FACTURA` en vez de `Factura`. Corregido usando `INVOICE_DOCUMENT_TYPE_LABELS`. |
+| **Links faltantes en dashboard** | `frontend/…/page.tsx` | Números de facturas vencidas y nombres de clientes morosos no eran clickeables. Agregados `<Link>`. |
+| **clientId URL param ignorado** | `frontend/…/facturas/page.tsx` | El link "Ver todas" desde detalle de cliente incluía `?clientId=` pero la lista no lo leía. Agregado `useSearchParams` con `useEffect` de sincronización. |
+
+## Roadmap
+
+- [ ] Integración real WhatsApp Business (Meta Cloud API / Twilio)
+- [ ] Portal público de pago para clientes (link en email → WebPay)
+- [ ] Exportación PDF de facturas con logo de empresa
+- [ ] Gestión de usuarios por empresa (CRUD de OPERADOR desde UI)
+- [ ] Reportes avanzados: aging de cartera, flujo de caja proyectado
+- [ ] Validación de formato RUT chileno en formularios
+- [ ] Bulk actions en lista de facturas
+- [ ] Rate limiting específico en login (anti brute-force)
+- [ ] Tests E2E con Playwright para flujos críticos
 
 ---
 

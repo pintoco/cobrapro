@@ -18,11 +18,21 @@ export interface ApiResponse<T> {
 export class TransformInterceptor<T> implements NestInterceptor<T, ApiResponse<T>> {
   intercept(context: ExecutionContext, next: CallHandler): Observable<ApiResponse<T>> {
     return next.handle().pipe(
-      map((data) => {
-        if (data && typeof data === 'object' && 'data' in data && 'message' in data) {
-          return { success: true, ...data };
+      map((data): ApiResponse<T> => {
+        if (data && typeof data === 'object' && 'data' in data) {
+          // Paginated responses have a meta object with totalPages — keep them wrapped
+          // so the frontend receives PaginatedResult as r.data.data
+          const meta = (data as any).meta;
+          const isPaginated =
+            meta && typeof meta === 'object' && 'totalPages' in meta;
+          if (isPaginated) {
+            return { success: true, data: data as T };
+          }
+          // Single-object / array / stats responses — spread so frontend gets the
+          // actual value at r.data.data instead of r.data.data.data
+          return { success: true, data: (data as any).data as T, ...(data as any) };
         }
-        return { success: true, data };
+        return { success: true, data: data as T };
       }),
     );
   }

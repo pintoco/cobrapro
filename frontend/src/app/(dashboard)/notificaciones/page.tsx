@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Bell, Play } from 'lucide-react';
+import { Bell, Play, ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { notificationsApi } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import type { PaginatedResult } from '@/types';
 
 const TYPE_LABELS: Record<string, string> = {
   REMINDER_3_DAYS_BEFORE: '3 días antes',
@@ -20,7 +21,7 @@ export default function NotificacionesPage() {
   const qc = useQueryClient();
   const [page, setPage] = useState(1);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading } = useQuery<PaginatedResult<any>>({
     queryKey: ['notifications', page],
     queryFn: () => notificationsApi.getAll({ page, limit: 20 }).then((r) => r.data.data),
   });
@@ -35,6 +36,7 @@ export default function NotificacionesPage() {
   });
 
   const notifications = data?.data ?? [];
+  const meta = data?.meta;
 
   return (
     <div className="space-y-5 max-w-5xl mx-auto">
@@ -94,6 +96,30 @@ export default function NotificacionesPage() {
             </tbody>
           </table>
         </div>
+
+        {meta && meta.totalPages > 1 && (
+          <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between text-sm">
+            <span className="text-gray-500 text-xs">
+              {meta.total} notificaciones · página {meta.page} de {meta.totalPages}
+            </span>
+            <div className="flex gap-2">
+              <button
+                disabled={!meta.hasPrevPage}
+                onClick={() => setPage(page - 1)}
+                className="btn-secondary py-1.5 px-3 disabled:opacity-40"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                disabled={!meta.hasNextPage}
+                onClick={() => setPage(page + 1)}
+                className="btn-secondary py-1.5 px-3 disabled:opacity-40"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
