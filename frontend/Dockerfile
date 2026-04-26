@@ -30,6 +30,10 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/next.config.js ./
 
+# Copy entrypoint
+COPY docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
+
 EXPOSE 3000
 
-CMD ["sh", "-c", "node_modules/.bin/next start -p ${PORT:-3000}"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
