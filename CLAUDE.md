@@ -124,7 +124,7 @@ npm run lint    # Next.js ESLint
 - **API client**: `src/lib/api.ts` — Axios instance with:
   - Request interceptor: attaches `Authorization: Bearer <token>` from cookie.
   - Response interceptor: on 401 → calls refresh endpoint → retries queued requests.
-  - Named namespaces: `authApi`, `clientsApi`, `invoicesApi`, `paymentsApi`, `notificationsApi`, `dashboardApi`.
+  - Named namespaces: `authApi`, `clientsApi`, `invoicesApi`, `paymentsApi`, `notificationsApi`, `dashboardApi`, `collectionNotesApi`, `subscriptionsApi`, `importApi` (FormData), `auditApi`, `adminApi`.
 - **Data fetching**: TanStack Query v5 with `staleTime: 30_000`. After mutations, call `queryClient.invalidateQueries`.
 - **Forms**: React Hook Form + Zod resolvers. Invoice form uses `useFieldArray` for dynamic line items and `useWatch` for real-time totals.
 - **`NEXT_PUBLIC_API_URL`** is a **build-time** variable (Next.js embeds it in the bundle). Set it as a Docker `ARG` before `npm run build`.
@@ -133,11 +133,17 @@ npm run lint    # Next.js ESLint
 
 | File | Description |
 |------|-------------|
-| `src/lib/api.ts` | Axios instance + all API methods |
-| `src/lib/utils.ts` | `formatCurrency`, `formatDate`, status config maps |
+| `src/lib/api.ts` | Axios instance + all API methods (11 namespaces) |
+| `src/lib/utils.ts` | `formatCurrency` (CLP/es-CL), `formatDate`, `formatRut`, status config maps |
 | `src/store/auth.store.ts` | Zustand auth store |
 | `src/types/index.ts` | Shared TypeScript interfaces |
 | `src/app/globals.css` | Utility classes: `.card`, `.btn-primary`, `.input`, `.badge`, `.sidebar-link` |
+| `src/components/layout/Sidebar.tsx` | Nav + admin section (visible solo SUPER_ADMIN) |
+| `src/components/clientes/ClienteModal.tsx` | Form con campos chilenos (RUT, razón social, giro, comuna) |
+| `src/components/facturas/FacturaModal.tsx` | Form con tipoDocumento, folio, ivaRate, totales CLP |
+| `src/app/(dashboard)/admin/metricas/page.tsx` | KPIs globales — SUPER_ADMIN |
+| `src/app/(dashboard)/admin/empresas/page.tsx` | Gestión empresas — SUPER_ADMIN |
+| `src/app/(dashboard)/admin/planes/page.tsx` | Planes y suscriptores — SUPER_ADMIN |
 | `docker-entrypoint.sh` | Starts `next start -H 0.0.0.0 -p $PORT` (Railway injects PORT) |
 
 ---
