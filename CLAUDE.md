@@ -32,7 +32,7 @@ npm run build           # compile TypeScript → dist/
 npm run lint            # ESLint with auto-fix
 npm run prisma:generate # regenerate Prisma client after schema changes
 npm run prisma:migrate  # create + apply a new migration (dev only)
-npm run prisma:seed     # seed the database
+npm run prisma:seed     # seed the database (creates SUPER_ADMIN)
 npm run prisma:studio   # open Prisma Studio at localhost:5555
 ```
 
@@ -67,7 +67,14 @@ npm run prisma:studio   # open Prisma Studio at localhost:5555
 
 Prisma schema at `backend/prisma/schema.prisma`. Main models: `Company → User, Client → Invoice → InvoiceItem, Payment, Notification`.
 
-**Production migrations**: use `prisma migrate deploy` (not `migrate dev`). The Docker entrypoint runs this automatically.
+**Production schema sync**: the Docker entrypoint runs `prisma db push --skip-generate --accept-data-loss` (no migration files in this repo — `db push` is used instead of `migrate deploy`).
+
+**binaryTargets**: `schema.prisma` includes `["native", "linux-musl-openssl-3.0.x"]` — required for Alpine Linux + OpenSSL 3 in Docker.
+
+### TypeScript build notes
+
+- `tsconfig.json` sets `"rootDir": "./src"` — compiled output lands at `dist/main.js` (not `dist/src/main.js`).
+- `tsconfig.build.json` excludes `prisma/` so `seed.ts` (outside `src/`) doesn't violate `rootDir`.
 
 ---
 
@@ -85,7 +92,10 @@ npm run lint    # Next.js ESLint
 ### Architecture patterns
 
 - **Route groups**: `(auth)/login` and `(dashboard)/` — the dashboard layout wraps all protected pages.
+  - `(dashboard)/page.tsx` maps to `/` (route group is transparent). Do **not** create `app/page.tsx` — it would shadow the dashboard page.
+  - After login, navigate to `/` (not `/dashboard`). The sidebar Dashboard link is also `/`.
 - **Auth state**: Zustand store (`src/store/auth.store.ts`) persisted to localStorage (only `user` + `isAuthenticated`). Tokens stored in cookies via `js-cookie`.
+- **Auth guard in layout**: `(dashboard)/layout.tsx` checks for `accessToken` cookie + `isAuthenticated`. Redirects to `/login` if missing.
 - **API client**: `src/lib/api.ts` — Axios instance with:
   - Request interceptor: attaches `Authorization: Bearer <token>` from cookie.
   - Response interceptor: on 401 → calls refresh endpoint → retries queued requests.
@@ -103,6 +113,7 @@ npm run lint    # Next.js ESLint
 | `src/store/auth.store.ts` | Zustand auth store |
 | `src/types/index.ts` | Shared TypeScript interfaces |
 | `src/app/globals.css` | Utility classes: `.card`, `.btn-primary`, `.input`, `.badge`, `.sidebar-link` |
+| `docker-entrypoint.sh` | Starts `next start -H 0.0.0.0 -p $PORT` (Railway injects PORT) |
 
 ---
 
@@ -118,7 +129,7 @@ docker compose up --build
 # postgres: localhost:5432
 ```
 
-The backend entrypoint (`backend/docker-entrypoint.sh`) runs `prisma migrate deploy` before starting the server.
+The backend entrypoint (`backend/docker-entrypoint.sh`) runs `prisma db push` before starting the server.
 
 ---
 
@@ -130,7 +141,24 @@ Each service has its own `railway.toml` (`builder = "DOCKERFILE"`).
 2. Attach a PostgreSQL plugin to `backend` — Railway injects `DATABASE_URL` automatically.
 3. Set env vars for `backend`: `JWT_SECRET`, `JWT_REFRESH_SECRET`, `JWT_EXPIRES_IN`, `JWT_REFRESH_EXPIRES_IN`, `CORS_ORIGINS` (frontend URL), SMTP vars.
 4. Set env var for `frontend`: `NEXT_PUBLIC_API_URL` (backend public URL) — set **before** the first deploy so it's embedded at build time.
-5. Do **not** set `PORT` — Railway injects it.
+5. Do **not** set `PORT` — Railway injects it automatically and the entrypoints consume it.
+6. Backend healthcheck: `GET /api/v1/health`. Frontend healthcheck: `GET /login` (root `/` redirects, which Railway rejects).
+
+### First user
+
+After deploying, create the first admin user via the public register endpoint:
+
+```bash
+curl -X POST https://<backend-url>/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "Admin",
+    "lastName": "Empresa",
+    "email": "admin@empresa.com",
+    "password": "SecurePass123!",
+    "companyName": "Mi Empresa"
+  }'
+```
 
 ---
 

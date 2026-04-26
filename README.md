@@ -2,6 +2,10 @@
 
 SaaS multi-tenant para gestión de cobranzas: clientes, facturas, pagos y recordatorios automáticos por correo.
 
+**Demo en producción:**
+- Frontend: `https://frontend-production-a941.up.railway.app`
+- Backend: `https://backend-production-1a66.up.railway.app/api/v1/health`
+
 ---
 
 ## Stack
@@ -27,7 +31,7 @@ SaaS multi-tenant para gestión de cobranzas: clientes, facturas, pagos y record
 - **Facturas**: líneas de detalle dinámicas, cálculo automático de subtotal + impuesto + descuento, transiciones de estado.
 - **Pagos**: registro de pagos, anulación, historial por factura.
 - **Notificaciones**: recordatorios manuales y automatizados (cron), plantillas HTML por tipo.
-- **Dashboard**: KPIs (total por cobrar, vencido, mora), gráfico de cobranza mensual (24 meses), clientes morosos.
+- **Dashboard**: KPIs (total por cobrar, vencido, mora), gráfico de cobranza mensual, clientes morosos.
 - **Tarea programada**: marca facturas vencidas diariamente.
 
 ---
@@ -59,7 +63,7 @@ cobrapro/
 │   ├── src/
 │   │   ├── app/
 │   │   │   ├── (auth)/login/
-│   │   │   └── (dashboard)/
+│   │   │   └── (dashboard)/     ← mapea a /
 │   │   │       ├── clientes/
 │   │   │       ├── facturas/
 │   │   │       ├── notificaciones/
@@ -69,6 +73,7 @@ cobrapro/
 │   │   ├── store/
 │   │   └── types/
 │   ├── Dockerfile
+│   ├── docker-entrypoint.sh
 │   └── railway.toml
 ├── docker-compose.yml
 ├── .env.example
@@ -100,10 +105,10 @@ docker compose up --build
 
 # Backend:   http://localhost:3001
 # Frontend:  http://localhost:3000
-# API Docs:  http://localhost:3001/api/docs  (solo en desarrollo)
+# API Docs:  http://localhost:3001/api/docs
 ```
 
-Las migraciones de Prisma se ejecutan automáticamente al iniciar el backend.
+El entrypoint del backend ejecuta `prisma db push` automáticamente al iniciar.
 
 ---
 
@@ -151,7 +156,7 @@ Variables obligatorias para producción:
 | `JWT_REFRESH_SECRET` | Secreto para refresh tokens (≥64 chars, diferente) |
 | `CORS_ORIGINS` | URLs del frontend (separadas por coma) |
 | `SMTP_*` | Credenciales SMTP para envío de correos |
-| `NEXT_PUBLIC_API_URL` | URL pública del backend (variable de build) |
+| `NEXT_PUBLIC_API_URL` | URL pública del backend (variable de build, embebida en el bundle) |
 
 ---
 
@@ -165,6 +170,23 @@ Variables obligatorias para producción:
 6. Hacer deploy — cada servicio usa su propio `railway.toml` con `builder = "DOCKERFILE"`.
 
 El healthcheck del backend apunta a `GET /api/v1/health`.
+El healthcheck del frontend apunta a `GET /login` (la raíz `/` redirigiría, Railway requiere 2xx).
+
+### Primer usuario
+
+Después del deploy, crear el primer administrador vía el endpoint público de registro:
+
+```bash
+curl -X POST https://<backend-url>/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "Admin",
+    "lastName": "Empresa",
+    "email": "admin@empresa.com",
+    "password": "SecurePass123!",
+    "companyName": "Mi Empresa"
+  }'
+```
 
 ---
 
@@ -178,14 +200,16 @@ Todos los endpoints usan el prefijo `/api/v1`.
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
+| POST | `/api/v1/auth/register` | Registrar empresa + admin |
 | POST | `/api/v1/auth/login` | Iniciar sesión |
 | POST | `/api/v1/auth/refresh` | Renovar access token |
 | POST | `/api/v1/auth/logout` | Cerrar sesión |
 | GET/POST | `/api/v1/clients` | Listar / crear clientes |
-| GET/PATCH/DELETE | `/api/v1/clients/:id` | Obtener / actualizar / eliminar cliente |
+| GET/PUT/DELETE | `/api/v1/clients/:id` | Obtener / actualizar / eliminar cliente |
 | GET/POST | `/api/v1/invoices` | Listar / crear facturas |
-| POST | `/api/v1/payments` | Registrar pago |
-| POST | `/api/v1/notifications/send` | Enviar recordatorio manual |
+| PATCH | `/api/v1/invoices/:id/status` | Cambiar estado de factura |
+| GET/POST | `/api/v1/payments` | Listar / registrar pagos |
+| PATCH | `/api/v1/payments/:id/void` | Anular pago |
 | GET | `/api/v1/dashboard/summary` | KPIs principales |
 | GET | `/api/v1/dashboard/monthly-collections` | Gráfico mensual |
 | GET | `/api/v1/health` | Health check (público) |
