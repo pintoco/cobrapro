@@ -108,6 +108,14 @@ export class InvoicesService {
   }
 
   async getStats(companyId: string) {
+    if (!companyId) {
+      return {
+        data: {
+          counts: { pending: 0, overdue: 0, paid: 0, dueSoon: 0 },
+          amounts: { totalPending: 0, totalOverdue: 0, totalCollected: 0 },
+        },
+      };
+    }
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 

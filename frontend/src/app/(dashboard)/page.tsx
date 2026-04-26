@@ -1,12 +1,15 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { DollarSign, AlertTriangle, TrendingUp, Users, Clock } from 'lucide-react';
 import { dashboardApi } from '@/lib/api';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { MonthlyChart } from '@/components/dashboard/MonthlyChart';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { useAuthStore } from '@/store/auth.store';
 import type { DashboardSummary, OverdueInvoice, DelinquentClient, MonthlyCollection } from '@/types';
 
 function Skeleton({ className }: { className?: string }) {
@@ -14,27 +17,43 @@ function Skeleton({ className }: { className?: string }) {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const { user } = useAuthStore();
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      router.replace('/admin/metricas');
+    }
+  }, [isSuperAdmin, router]);
+
   const { data: summary, isLoading: loadingSummary } = useQuery<DashboardSummary>({
     queryKey: ['dashboard', 'summary'],
     queryFn: () => dashboardApi.getSummary().then((r) => r.data.data),
+    enabled: !isSuperAdmin,
   });
 
   const { data: overdueList = [], isLoading: loadingOverdue } = useQuery<OverdueInvoice[]>({
     queryKey: ['dashboard', 'overdue'],
     queryFn: () => dashboardApi.getOverdueInvoices(8).then((r) => r.data.data),
+    enabled: !isSuperAdmin,
   });
 
   const { data: delinquentList = [], isLoading: loadingDelinquent } = useQuery<DelinquentClient[]>({
     queryKey: ['dashboard', 'delinquent'],
     queryFn: () => dashboardApi.getDelinquentClients(6).then((r) => r.data.data),
+    enabled: !isSuperAdmin,
   });
 
   const { data: monthly = [] } = useQuery<MonthlyCollection[]>({
     queryKey: ['dashboard', 'monthly'],
     queryFn: () => dashboardApi.getMonthlyCollections(12).then((r) => r.data.data),
+    enabled: !isSuperAdmin,
   });
 
   const growthPercent = summary?.collections.growthPercent;
+
+  if (isSuperAdmin) return null;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">

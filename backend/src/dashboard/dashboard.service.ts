@@ -11,6 +11,14 @@ export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getSummary(companyId: string) {
+    if (!companyId) {
+      return {
+        receivables: { total: 0, overdue: 0, pending: 0, partial: 0 },
+        invoiceCounts: { overdue: 0, pending: 0, partial: 0, openTotal: 0 },
+        collections: { paidInvoicesThisMonth: 0, collectedThisMonth: 0, collectedLastMonth: 0, growthPercent: null },
+        clients: { active: 0, delinquent: 0 },
+      };
+    }
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -110,6 +118,7 @@ export class DashboardService {
   }
 
   async getOverdueInvoices(companyId: string, limit = 10) {
+    if (!companyId) return [];
     const invoices = await this.prisma.invoice.findMany({
       where: { companyId, status: InvoiceStatus.OVERDUE },
       orderBy: { dueDate: 'asc' },
@@ -146,6 +155,7 @@ export class DashboardService {
   }
 
   async getUpcomingInvoices(companyId: string, days = 7, limit = 10) {
+    if (!companyId) return [];
     const now = new Date();
     const until = new Date(now);
     until.setDate(until.getDate() + days);
@@ -190,6 +200,7 @@ export class DashboardService {
   }
 
   async getDelinquentClients(companyId: string, limit = 10) {
+    if (!companyId) return [];
     const clients = await this.prisma.client.findMany({
       where: {
         companyId,
@@ -245,6 +256,7 @@ export class DashboardService {
   }
 
   async getMonthlyCollections(companyId: string, months = 12) {
+    if (!companyId) return [];
     const now = new Date();
 
     const ranges = Array.from({ length: months }, (_, i) => {
