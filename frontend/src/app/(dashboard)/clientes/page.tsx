@@ -158,7 +158,7 @@ export default function ClientesPage() {
                         <br />{c.documentNumber}
                       </td>
                       <td className="px-5 py-4 text-gray-600">{c.phone ?? '—'}</td>
-                      <td className="px-5 py-4 text-gray-600">{c.city ?? '—'}</td>
+                      <td className="px-5 py-4 text-gray-600">{c.ciudad ?? '—'}</td>
                       <td className="px-5 py-4">
                         <span className={`badge ${cfg.bg} ${cfg.color}`}>{cfg.label}</span>
                       </td>

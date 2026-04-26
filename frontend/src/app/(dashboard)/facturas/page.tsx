@@ -51,13 +51,15 @@ export default function FacturasPage() {
     setSaving(true);
     try {
       await invoicesApi.create({
-        clientId:  form.clientId,
-        issueDate: form.issueDate,
-        dueDate:   form.dueDate,
-        currency:  form.currency,
-        taxRate:   form.taxRate,
-        discount:  form.discount,
-        notes:     form.notes || undefined,
+        clientId:      form.clientId,
+        tipoDocumento: form.tipoDocumento,
+        folio:         form.folio || undefined,
+        issueDate:     form.issueDate,
+        dueDate:       form.dueDate,
+        currency:      form.currency,
+        ivaRate:       form.ivaRate,
+        discount:      form.discount,
+        notes:         form.notes || undefined,
         items: form.items.map((item) => ({
           description: item.description,
           quantity:    item.quantity,
