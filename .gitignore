@@ -11,6 +11,8 @@ frontend/node_modules/
 # Build outputs
 backend/dist/
 frontend/.next/
+backend/tsconfig.tsbuildinfo
+frontend/next-env.d.ts
 
 # Logs
 *.log
