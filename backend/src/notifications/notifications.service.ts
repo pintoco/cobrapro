@@ -159,7 +159,7 @@ export class NotificationsService {
       invoiceNumber: invoice.invoiceNumber,
       invoiceTotal: Number(invoice.total),
       currency: invoice.currency,
-      dueDate: new Date(invoice.dueDate).toLocaleDateString('es-PE', {
+      dueDate: new Date(invoice.dueDate).toLocaleDateString('es-CL', {
         year: 'numeric', month: 'long', day: 'numeric',
       }),
       companyName: company.name,

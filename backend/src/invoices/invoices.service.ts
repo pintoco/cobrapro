@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { QueryInvoiceDto, InvoiceStatus } from './dto/query-invoice.dto';
@@ -39,7 +40,10 @@ const ALLOWED_TRANSITIONS: Record<InvoiceStatus, InvoiceStatus[]> = {
 export class InvoicesService {
   private readonly logger = new Logger(InvoicesService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly subscriptions: SubscriptionsService,
+  ) {}
 
   // ─────────────────────────────────────────
   // QUERIES
@@ -156,12 +160,15 @@ export class InvoicesService {
   // ─────────────────────────────────────────
 
   async create(dto: CreateInvoiceDto, companyId: string) {
+    await this.subscriptions.validateInvoiceMonthlyLimit(companyId);
     await this.validateClient(dto.clientId, companyId);
 
-    const dueDate = new Date(dto.dueDate);
-    if (dueDate <= new Date()) {
-      throw new BadRequestException('La fecha de vencimiento debe ser futura');
+    const dueDateStr = dto.dueDate.slice(0, 10);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (dueDateStr < todayStr) {
+      throw new BadRequestException('La fecha de vencimiento no puede ser en el pasado');
     }
+    const dueDate = new Date(dto.dueDate);
 
     const ivaRate = dto.ivaRate ?? 19;
     const discount = dto.discount ?? 0;

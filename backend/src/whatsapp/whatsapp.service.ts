@@ -36,8 +36,8 @@ export class WhatsAppService {
         body: JSON.stringify(message.variables),
         sentAt: new Date(),
         companyId,
-        invoiceId: message.variables.invoiceId ?? '',
-        clientId: message.variables.clientId ?? '',
+        ...(message.variables.invoiceId && { invoiceId: message.variables.invoiceId }),
+        ...(message.variables.clientId && { clientId: message.variables.clientId }),
       },
     }).catch(() => {
       // No bloquear si el log falla
