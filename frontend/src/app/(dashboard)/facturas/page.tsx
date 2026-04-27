@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -23,7 +23,7 @@ const STATUS_OPTIONS = [
   { value: 'CANCELLED', label: 'Anuladas' },
 ];
 
-export default function FacturasPage() {
+function FacturasContent() {
   const qc = useQueryClient();
   const searchParams = useSearchParams();
   const [page, setPage]         = useState(1);
@@ -277,5 +277,13 @@ export default function FacturasPage() {
 
       {menuOpen && <div className="fixed inset-0 z-0" onClick={() => setMenuOpen(null)} />}
     </div>
+  );
+}
+
+export default function FacturasPage() {
+  return (
+    <Suspense>
+      <FacturasContent />
+    </Suspense>
   );
 }

@@ -33,13 +33,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const { isAuthenticated } = useAuthStore();
   const [collapsed, setCollapsed] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    if (!Cookies.get('accessToken') && !isAuthenticated) {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && !Cookies.get('accessToken') && !isAuthenticated) {
       router.replace('/login');
     }
-  }, [isAuthenticated, router]);
+  }, [mounted, isAuthenticated, router]);
 
+  if (!mounted) return <div className="h-screen bg-gray-50" />;
   if (!isAuthenticated && !Cookies.get('accessToken')) return null;
 
   const title = getPageTitle(pathname);
