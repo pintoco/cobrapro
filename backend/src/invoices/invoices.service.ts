@@ -4,8 +4,9 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, AuditAction } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
@@ -43,6 +44,7 @@ export class InvoicesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly subscriptions: SubscriptionsService,
+    private readonly audit: AuditService,
   ) {}
 
   // ─────────────────────────────────────────
@@ -167,7 +169,7 @@ export class InvoicesService {
   // MUTATIONS
   // ─────────────────────────────────────────
 
-  async create(dto: CreateInvoiceDto, companyId: string) {
+  async create(dto: CreateInvoiceDto, companyId: string, userId?: string) {
     await this.subscriptions.validateInvoiceMonthlyLimit(companyId);
     await this.validateClient(dto.clientId, companyId);
 
@@ -217,22 +219,32 @@ export class InvoicesService {
 
     this.logger.log(`Factura creada: ${invoice.invoiceNumber} | Empresa: ${companyId}`);
 
+    this.audit.log(
+      { companyId, userId },
+      AuditAction.CREATE,
+      'Invoice',
+      invoice.id,
+      undefined,
+      { invoiceNumber: invoice.invoiceNumber, total: invoice.total, status: invoice.status },
+    );
+
     return { data: invoice, message: 'Factura creada exitosamente' };
   }
 
-  async update(id: string, dto: UpdateInvoiceDto, companyId: string) {
+  async update(id: string, dto: UpdateInvoiceDto, companyId: string, userId?: string) {
     const { data: existing } = await this.findOne(id, companyId);
 
     if (!['PENDING', 'PARTIAL'].includes(existing.status)) {
       throw new BadRequestException(
-        `Cannot edit an invoice with status "${existing.status}"`,
+        `No se puede editar una factura con estado "${existing.status}"`,
       );
     }
 
     if (dto.dueDate) {
-      const dueDate = new Date(dto.dueDate);
-      if (dueDate <= new Date()) {
-        throw new BadRequestException('Due date must be in the future');
+      const dueDateStr = dto.dueDate.slice(0, 10);
+      const todayStr = new Date().toISOString().slice(0, 10);
+      if (dueDateStr < todayStr) {
+        throw new BadRequestException('La fecha de vencimiento no puede ser en el pasado');
       }
     }
 
@@ -278,10 +290,19 @@ export class InvoicesService {
       include: INVOICE_INCLUDE,
     });
 
-    return { data: invoice, message: 'Invoice updated successfully' };
+    this.audit.log(
+      { companyId, userId },
+      AuditAction.UPDATE,
+      'Invoice',
+      id,
+      { status: existing.status, total: existing.total },
+      { total: invoice.total, dueDate: invoice.dueDate },
+    );
+
+    return { data: invoice, message: 'Factura actualizada exitosamente' };
   }
 
-  async changeStatus(id: string, newStatus: InvoiceStatus, companyId: string) {
+  async changeStatus(id: string, newStatus: InvoiceStatus, companyId: string, userId?: string) {
     const { data: invoice } = await this.findOne(id, companyId);
     const currentStatus = invoice.status as InvoiceStatus;
 
@@ -302,11 +323,20 @@ export class InvoicesService {
       include: INVOICE_INCLUDE,
     });
 
-    return { data: updated, message: `Invoice status updated to ${newStatus}` };
+    this.audit.log(
+      { companyId, userId },
+      AuditAction.STATUS_CHANGE,
+      'Invoice',
+      id,
+      { status: currentStatus },
+      { status: newStatus },
+    );
+
+    return { data: updated, message: `Estado de factura actualizado a ${newStatus}` };
   }
 
-  async cancel(id: string, companyId: string) {
-    return this.changeStatus(id, InvoiceStatus.CANCELLED, companyId);
+  async cancel(id: string, companyId: string, userId?: string) {
+    return this.changeStatus(id, InvoiceStatus.CANCELLED, companyId, userId);
   }
 
   // ─────────────────────────────────────────

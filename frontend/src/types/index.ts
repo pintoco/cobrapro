@@ -71,9 +71,6 @@ export interface Invoice {
   ivaRate: number;
   neto: number;
   iva: number;
-  // Legacy
-  taxRate: number;
-  taxAmount: number;
   discount: number;
   total: number;
   currency: string;

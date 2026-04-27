@@ -56,7 +56,7 @@ export class ImportController {
     @Request() req: any,
   ) {
     if (!file) throw new Error('Archivo requerido');
-    return this.importService.importClients(file.buffer, req.user.companyId, dryRun === 'true');
+    return this.importService.importClients(file.buffer, req.user.companyId, dryRun === 'true', req.user.sub);
   }
 
   @Post('invoices')
@@ -70,6 +70,6 @@ export class ImportController {
     @Request() req: any,
   ) {
     if (!file) throw new Error('Archivo requerido');
-    return this.importService.importInvoices(file.buffer, req.user.companyId, dryRun === 'true');
+    return this.importService.importInvoices(file.buffer, req.user.companyId, dryRun === 'true', req.user.sub);
   }
 }

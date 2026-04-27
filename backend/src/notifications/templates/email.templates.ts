@@ -60,9 +60,17 @@ function baseLayout(content: string, companyName: string): string {
 }
 
 function formatCurrency(amount: number, currency: string): string {
-  const symbols: Record<string, string> = { PEN: 'S/', USD: '$', EUR: '€' };
-  const symbol = symbols[currency] ?? currency;
-  return `${symbol} ${amount.toFixed(2)}`;
+  try {
+    const decimals = currency === 'CLP' ? 0 : 2;
+    return new Intl.NumberFormat('es-CL', {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    }).format(amount);
+  } catch {
+    return `${currency} ${amount.toFixed(2)}`;
+  }
 }
 
 // ─── TEMPLATE 1: 3 días antes del vencimiento ───────────────────────────────

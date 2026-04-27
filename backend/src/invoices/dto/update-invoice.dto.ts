@@ -28,13 +28,6 @@ export class UpdateInvoiceDto {
   @IsOptional()
   ivaRate?: number;
 
-  @ApiPropertyOptional({ example: 19 })
-  @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0)
-  @IsOptional()
-  taxRate?: number;
-
   @ApiPropertyOptional({ example: 0 })
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })

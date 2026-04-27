@@ -89,6 +89,6 @@ export class PaymentsController {
     @Body() dto: VoidPaymentDto,
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.paymentsService.voidPayment(id, dto, user.companyId);
+    return this.paymentsService.voidPayment(id, dto, user.companyId, user.sub);
   }
 }

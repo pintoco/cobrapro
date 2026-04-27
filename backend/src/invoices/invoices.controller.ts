@@ -60,7 +60,7 @@ export class InvoicesController {
   @ApiOperation({ summary: 'Create a new invoice with line items' })
   @ApiResponse({ status: 201, description: 'Invoice created with auto-generated number' })
   create(@Body() dto: CreateInvoiceDto, @CurrentUser() user: JwtPayload) {
-    return this.invoicesService.create(dto, user.companyId);
+    return this.invoicesService.create(dto, user.companyId, user.sub);
   }
 
   @Put(':id')
@@ -70,7 +70,7 @@ export class InvoicesController {
     @Body() dto: UpdateInvoiceDto,
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.invoicesService.update(id, dto, user.companyId);
+    return this.invoicesService.update(id, dto, user.companyId, user.sub);
   }
 
   @Patch(':id/status')
@@ -84,7 +84,7 @@ export class InvoicesController {
     @Body('status') status: InvoiceStatus,
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.invoicesService.changeStatus(id, status, user.companyId);
+    return this.invoicesService.changeStatus(id, status, user.companyId, user.sub);
   }
 
   @Patch(':id/cancel')
@@ -92,6 +92,6 @@ export class InvoicesController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Cancel an invoice (shortcut for status CANCELLED)' })
   cancel(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
-    return this.invoicesService.cancel(id, user.companyId);
+    return this.invoicesService.cancel(id, user.companyId, user.sub);
   }
 }

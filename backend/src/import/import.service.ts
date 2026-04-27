@@ -4,7 +4,9 @@ import {
   ForbiddenException,
   Logger,
 } from '@nestjs/common';
+import { AuditAction } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import * as ExcelJS from 'exceljs';
 
@@ -41,6 +43,7 @@ export class ImportService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly subscriptions: SubscriptionsService,
+    private readonly audit: AuditService,
   ) {}
 
   // ── Template de clientes ──
@@ -147,6 +150,7 @@ export class ImportService {
     fileBuffer: Buffer,
     companyId: string,
     dryRun = false,
+    userId?: string,
   ) {
     await this.subscriptions.validateExcelImportAccess(companyId);
 
@@ -241,6 +245,17 @@ export class ImportService {
 
     this.logger.log(`Import clientes: ${imported} importados, ${skipped} saltados | empresa: ${companyId}`);
 
+    if (imported > 0) {
+      this.audit.log(
+        { companyId, userId },
+        AuditAction.IMPORT,
+        'Client',
+        undefined,
+        undefined,
+        { imported, skipped, total: rows.length },
+      );
+    }
+
     return {
       data: { total: rows.length, imported, skipped },
       message: `Importación completa: ${imported} clientes creados, ${skipped} ya existían.`,
@@ -253,6 +268,7 @@ export class ImportService {
     fileBuffer: Buffer,
     companyId: string,
     dryRun = false,
+    userId?: string,
   ) {
     await this.subscriptions.validateExcelImportAccess(companyId);
 
@@ -363,6 +379,17 @@ export class ImportService {
     }
 
     this.logger.log(`Import facturas: ${imported} importadas, ${skipped} saltadas | empresa: ${companyId}`);
+
+    if (imported > 0) {
+      this.audit.log(
+        { companyId, userId },
+        AuditAction.IMPORT,
+        'Invoice',
+        undefined,
+        undefined,
+        { imported, skipped, total: rows.length },
+      );
+    }
 
     return {
       data: { total: rows.length, imported, skipped },

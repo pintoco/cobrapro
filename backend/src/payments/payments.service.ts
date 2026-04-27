@@ -4,8 +4,9 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { Prisma, InvoiceStatus } from '@prisma/client';
+import { Prisma, InvoiceStatus, AuditAction } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { VoidPaymentDto } from './dto/void-payment.dto';
 import { QueryPaymentDto } from './dto/query-payment.dto';
@@ -41,7 +42,10 @@ const PAYABLE_STATUSES = ['PENDING', 'OVERDUE', 'PARTIAL'];
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   // ─────────────────────────────────────────
   // QUERIES
@@ -224,15 +228,31 @@ export class PaymentsService {
       `Payment registered: ${payment.id} | Invoice: ${invoice.invoiceNumber} | Amount: ${dto.amount} | New status: ${newInvoiceStatus}`,
     );
 
+    this.audit.log(
+      { companyId, userId },
+      AuditAction.CREATE,
+      'Payment',
+      payment.id,
+      undefined,
+      {
+        invoiceId: dto.invoiceId,
+        invoiceNumber: invoice.invoiceNumber,
+        amount: dto.amount,
+        method: dto.method ?? 'BANK_TRANSFER',
+        newInvoiceStatus,
+        remainingBalance: Math.max(0, remaining - dto.amount),
+      },
+    );
+
     return {
       data: payment,
-      message: `Payment registered. Invoice is now ${newInvoiceStatus}.`,
+      message: `Pago registrado. Factura ahora en estado ${newInvoiceStatus}.`,
       invoiceStatus: newInvoiceStatus,
       remainingBalance: Math.max(0, remaining - dto.amount),
     };
   }
 
-  async voidPayment(id: string, dto: VoidPaymentDto, companyId: string) {
+  async voidPayment(id: string, dto: VoidPaymentDto, companyId: string, userId?: string) {
     const { data: payment } = await this.findOne(id, companyId);
 
     if (payment.status === 'VOIDED') {
@@ -283,9 +303,18 @@ export class PaymentsService {
       `Payment voided: ${id} | Invoice: ${invoice.invoiceNumber} | Reason: ${dto.voidReason}`,
     );
 
+    this.audit.log(
+      { companyId, userId },
+      AuditAction.STATUS_CHANGE,
+      'Payment',
+      id,
+      { status: 'COMPLETED', invoiceStatus: invoice.status },
+      { status: 'VOIDED', voidReason: dto.voidReason, newInvoiceStatus },
+    );
+
     return {
       data: voided,
-      message: `Payment voided. Invoice reverted to ${newInvoiceStatus}.`,
+      message: `Pago anulado. Factura revertida a ${newInvoiceStatus}.`,
       invoiceStatus: newInvoiceStatus,
     };
   }
