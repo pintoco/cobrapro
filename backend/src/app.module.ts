@@ -16,7 +16,6 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { HealthModule } from './health/health.module';
 
-// Nuevos módulos
 import { AuditModule } from './audit/audit.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { CollectionNotesModule } from './collection-notes/collection-notes.module';
@@ -36,10 +35,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
       isGlobal: true,
       load: [configuration],
     }),
-    // Rate limiting: 100 requests por 60 segundos por IP
-    ThrottlerModule.forRoot([
-      { ttl: 60_000, limit: 100 },
-    ]),
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     JwtModule.registerAsync({
       global: true,
       imports: [ConfigModule],
@@ -50,10 +46,8 @@ import { RolesGuard } from './auth/guards/roles.guard';
       }),
     }),
     PrismaModule,
-    // Módulos @Global() primero
     AuditModule,
     SubscriptionsModule,
-    // Módulos de negocio
     AuthModule,
     CompaniesModule,
     UsersModule,
@@ -63,7 +57,6 @@ import { RolesGuard } from './auth/guards/roles.guard';
     NotificationsModule,
     DashboardModule,
     HealthModule,
-    // Nuevas fases
     CollectionNotesModule,
     ImportModule,
     WhatsAppModule,
@@ -86,7 +79,6 @@ import { RolesGuard } from './auth/guards/roles.guard';
       provide: APP_GUARD,
       useClass: RolesGuard,
     },
-    // Rate limiting como guard global (después de JWT)
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

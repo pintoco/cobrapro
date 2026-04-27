@@ -2,9 +2,7 @@ import {
   Controller,
   Get,
   Post,
-  Put,
   Patch,
-  Delete,
   Param,
   Body,
   Query,
@@ -63,7 +61,7 @@ export class InvoicesController {
     return this.invoicesService.create(dto, user.companyId, user.sub);
   }
 
-  @Put(':id')
+  @Patch(':id')
   @ApiOperation({ summary: 'Update a PENDING or PARTIAL invoice' })
   update(
     @Param('id') id: string,

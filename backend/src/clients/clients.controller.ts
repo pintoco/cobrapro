@@ -2,7 +2,6 @@ import {
   Controller,
   Get,
   Post,
-  Put,
   Patch,
   Delete,
   Param,
@@ -66,7 +65,7 @@ export class ClientsController {
     return this.clientsService.create(dto, user.companyId, auditCtx(req));
   }
 
-  @Put(':id')
+  @Patch(':id')
   @ApiOperation({ summary: 'Actualizar cliente' })
   update(
     @Param('id') id: string,
