@@ -142,7 +142,7 @@ docker compose up --build
 # API Docs:  http://localhost:3001/api/docs
 ```
 
-El entrypoint del backend ejecuta `prisma db push` automáticamente al iniciar.
+El entrypoint del backend ejecuta `prisma migrate deploy` automáticamente al iniciar (con resolución automática de baseline para DBs existentes).
 
 ---
 
@@ -266,7 +266,7 @@ Todos los endpoints usan el prefijo `/api/v1`.
 | POST | `/auth/refresh` | Renovar access token |
 | POST | `/auth/logout` | Cerrar sesión |
 | GET/POST | `/clients` | Listar / crear clientes |
-| GET/PUT/DELETE | `/clients/:id` | Obtener / actualizar / eliminar cliente |
+| GET/PATCH/DELETE | `/clients/:id` | Obtener / actualizar / eliminar cliente |
 | GET/POST | `/invoices` | Listar / crear facturas |
 | PATCH | `/invoices/:id/status` | Cambiar estado de factura |
 | GET/POST | `/payments` | Listar / registrar pagos |
@@ -307,15 +307,20 @@ cd backend && npm run prisma:seed
 
 ---
 
-## Bugs corregidos (revisión completa)
+## Bugs corregidos
 
 | Bug | Archivo | Descripción |
 |-----|---------|-------------|
-| **TransformInterceptor** | `backend/src/common/interceptors/transform.interceptor.ts` | La condición `'message' in data` causaba doble-envolvimiento en respuestas sin `message` (findOne, getStats, etc.), rompiendo todas las páginas de detalle. Corregido distinguiendo respuestas paginadas (`meta.totalPages`) de objeto único. |
-| **Notificaciones sin paginación** | `frontend/…/notificaciones/page.tsx` | Estado de paginación existía pero no había controles UI. Agregados botones prev/next y contador. |
-| **tipoDocumento enum crudo** | `frontend/…/facturas/[id]/page.tsx` | Mostraba `FACTURA` en vez de `Factura`. Corregido usando `INVOICE_DOCUMENT_TYPE_LABELS`. |
-| **Links faltantes en dashboard** | `frontend/…/page.tsx` | Números de facturas vencidas y nombres de clientes morosos no eran clickeables. Agregados `<Link>`. |
-| **clientId URL param ignorado** | `frontend/…/facturas/page.tsx` | El link "Ver todas" desde detalle de cliente incluía `?clientId=` pero la lista no lo leía. Agregado `useSearchParams` con `useEffect` de sincronización. |
+| **TransformInterceptor** | `backend/src/common/interceptors/transform.interceptor.ts` | La condición `'message' in data` causaba doble-envolvimiento en respuestas sin `message`. Corregido distinguiendo respuestas paginadas (`meta.totalPages`) de objeto único. |
+| **Notificaciones sin paginación** | `frontend/…/notificaciones/page.tsx` | Controles de paginación faltaban en la UI. |
+| **tipoDocumento enum crudo** | `frontend/…/facturas/[id]/page.tsx` | Mostraba `FACTURA` en vez de la etiqueta legible. |
+| **Links faltantes en dashboard** | `frontend/…/page.tsx` | Facturas vencidas y clientes morosos sin link de navegación. |
+| **clientId URL param ignorado** | `frontend/…/facturas/page.tsx` | La lista no leía `?clientId=` de la URL. |
+| **HTTP method mismatch** | `backend/src/clients/clients.controller.ts`, `invoices.controller.ts` | `@Put(':id')` declarado pero el frontend llama `PATCH` → editar clientes/facturas retornaba 404. Corregido a `@Patch`. |
+| **Cron duplicado** | `backend/src/invoices/invoice-expiration.task.ts` | `InvoiceExpirationTask` duplicaba el step de `CollectionAutomationTask`. Eliminado. `ScheduleModule.forRoot()` también dejó de registrarse dos veces. |
+| **Admin empresas crash** | `frontend/…/admin/empresas/page.tsx` | `queryFn` accedía `r.data` en vez de `r.data.data` para respuesta paginada → `companies.map()` fallaba porque el valor era un objeto. |
+| **Hydration mismatch** | `frontend/…/(dashboard)/layout.tsx` | `return null` en SSR pero layout completo en cliente → React hydration error. Corregido con estado `mounted`. |
+| **useSearchParams sin Suspense** | `frontend/…/facturas/page.tsx` | Next.js 14 requiere `<Suspense>` alrededor de `useSearchParams()`. Sin él lanzaba "Application error" en producción. |
 
 ## Roadmap
 

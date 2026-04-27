@@ -13,7 +13,7 @@ export default function AdminEmpresasPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-companies', page],
-    queryFn: () => adminApi.listCompanies({ page, limit: 20 }).then((r) => r.data),
+    queryFn: () => adminApi.listCompanies({ page, limit: 20 }).then((r) => r.data.data),
   });
 
   const statusMutation = useMutation({

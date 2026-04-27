@@ -27,6 +27,11 @@ Stack: NestJS 10 (backend) + Next.js 14 App Router (frontend) + Prisma 5 + Postg
 - **Facturas detail**: `tipoDocumento` mostraba el enum crudo en vez de la etiqueta legible.
 - **Dashboard**: números de factura vencida y nombres de clientes morosos no tenían link de navegación.
 - **Facturas list**: ignoraba el query param `clientId` de la URL (rompía el link "Ver todas" desde detalle de cliente).
+- **HTTP method mismatch**: `clients.controller.ts` e `invoices.controller.ts` declaraban `@Put(':id')` pero `api.ts` llama `PATCH`. Corregido a `@Patch`. Editar clientes y facturas retornaba 404 silenciosamente.
+- **Cron duplicado**: `InvoiceExpirationTask` (1:00 AM) duplicaba `CollectionAutomationTask.markOverdue()` (00:05 AM) — ambos llamaban `markOverdueInvoices()`. Eliminado `InvoiceExpirationTask`, removido `ScheduleModule.forRoot()` doble en `InvoicesModule`.
+- **Admin empresas crash**: `queryFn` accedía `r.data` en vez de `r.data.data` para la respuesta paginada de `listCompanies`. Causaba que `companies.map()` lanzara error porque el valor era un objeto, no un array.
+- **Hydration mismatch (layout)**: `DashboardLayout` retornaba `null` en SSR (Zustand sin localStorage, js-cookie sin document) pero el cliente renderizaba el layout completo → React hydration error. Corregido con estado `mounted`.
+- **useSearchParams sin Suspense**: Next.js 14 requiere `<Suspense>` alrededor de cualquier componente que llame `useSearchParams()`. `facturas/page.tsx` no lo tenía → "Application error" en producción. Corregido extrayendo `FacturasContent` y envolviéndolo en `<Suspense>`.
 
 ---
 
@@ -87,7 +92,7 @@ clientsApi.getAll({limit:200}).then((r) => r.data.data.data)
 - **Auth guards**: `JwtAuthGuard` is applied globally via `APP_GUARD`. Mark public routes with `@Public()`.
 - **Role guard**: applied globally via `APP_GUARD`. Use `@Roles(Role.ADMIN_EMPRESA)` on controllers/handlers.
 - **Tenant middleware**: extracts `X-Tenant-ID` header (for super-admin cross-tenant operations).
-- **Cron tasks**: `InvoiceExpirationTask` marks overdue invoices daily. `CollectionAutomationTask` sends reminders.
+- **Cron tasks**: `CollectionAutomationTask` (en `NotificationsModule`) corre en dos pasos: 00:05 AM marca facturas vencidas (`markOverdueInvoices`), 08:00 AM envía recordatorios por email. `InvoiceExpirationTask` fue eliminado (era duplicado).
 - **Email**: `EmailService` uses Nodemailer with SMTP config. Templates live in `src/notifications/templates/`.
 - **Config**: all env vars are accessed via `ConfigService` using dot-path keys (`jwt.secret`, `database.url`, etc.). See `src/config/configuration.ts`.
 - **Global exception filter** and **response interceptor** are registered in `app.module.ts` via `APP_FILTER` / `APP_INTERCEPTOR`.
@@ -126,7 +131,7 @@ No se requieren nuevas variables obligatorias. Las siguientes son opcionales:
 
 Prisma schema at `backend/prisma/schema.prisma`. Main models: `Company → User, Client → Invoice → InvoiceItem, Payment, Notification`.
 
-**Production schema sync**: the Docker entrypoint runs `prisma db push --skip-generate --accept-data-loss` (no migration files in this repo — `db push` is used instead of `migrate deploy`).
+**Production schema sync**: the Docker entrypoint runs `prisma migrate deploy` using the migration in `prisma/migrations/`. If the DB was previously created with `db push` (no `_prisma_migrations` table), the entrypoint auto-resolves the baseline and retries. On a completely fresh DB it falls back to `db push`.
 
 **binaryTargets**: `schema.prisma` includes `["native", "linux-musl-openssl-3.0.x"]` — required for Alpine Linux + OpenSSL 3 in Docker.
 
@@ -199,7 +204,7 @@ docker compose up --build
 # postgres: localhost:5432
 ```
 
-The backend entrypoint (`backend/docker-entrypoint.sh`) runs `prisma db push` before starting the server.
+The backend entrypoint (`backend/docker-entrypoint.sh`) runs `prisma migrate deploy` (with automatic baseline resolve for existing DBs), then seeds, then starts the server.
 
 ---
 
